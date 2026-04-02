@@ -13,23 +13,19 @@ export interface TeamRecord {
   losses: number;
   ties: number;
   record: string;
-  conference: string;
-  division: string;
-  pointsFor: number;
-  pointsAgainst: number;
   gamesPlayed: number;
   avgPointsFor: number;
   avgPointsAgainst: number;
 }
 
 export interface TeamStats extends TeamRecord {
-  // Offense (per game)
+  // Offense per game
   netPassingYardsPerGame: number;
   rushingYardsPerGame: number;
   totalOffensiveYardsPerGame: number;
   passingTouchdowns: number;
   rushingTouchdowns: number;
-  // Defense (season totals or per game)
+  // Defense season totals
   sacks: number;
   defensiveInterceptions: number;
   fumblesRecovered: number;
@@ -55,6 +51,21 @@ export interface LeaderCategory {
   leaders: PlayerLeader[];
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function statMap(categories: any[]): Record<string, { value: number; perGame: number }> {
+  const map: Record<string, { value: number; perGame: number }> = {};
+  for (const cat of categories ?? []) {
+    for (const stat of cat.stats ?? []) {
+      map[stat.name] = {
+        value: typeof stat.value === "number" ? stat.value : parseFloat(String(stat.displayValue ?? "0").replace(/,/g, "")),
+        perGame: typeof stat.perGameValue === "number" ? stat.perGameValue : 0,
+      };
+    }
+  }
+  return map;
+}
+
 // ─── Standings ────────────────────────────────────────────────────────────────
 
 export async function getStandings(): Promise<TeamRecord[]> {
@@ -70,36 +81,25 @@ export async function getStandings(): Promise<TeamRecord[]> {
     for (const conf of data.children ?? []) {
       for (const div of conf.children ?? []) {
         for (const entry of div.standings?.entries ?? []) {
-          const statsMap: Record<string, number | string> = {};
+          const sm: Record<string, number | string> = {};
           for (const s of entry.stats ?? []) {
-            if (s.value !== undefined) statsMap[s.name] = s.value;
-            if (s.displayValue !== undefined) statsMap[`${s.name}_display`] = s.displayValue;
-            if (s.summary !== undefined) statsMap[`${s.name}_summary`] = s.summary;
+            if (s.value !== undefined) sm[s.name] = s.value;
+            if (s.summary !== undefined) sm[`${s.name}_summary`] = s.summary;
           }
-
-          const wins = Number(statsMap.wins ?? 0);
-          const losses = Number(statsMap.losses ?? 0);
-          const ties = Number(statsMap.ties ?? 0);
+          const wins = Number(sm.wins ?? 0);
+          const losses = Number(sm.losses ?? 0);
+          const ties = Number(sm.ties ?? 0);
           const gamesPlayed = wins + losses + ties || 17;
-          const record = String(statsMap["overall_summary"] ?? `${wins}-${losses}`);
-          const pointsFor = Number(statsMap.pointsFor ?? 0);
-          const pointsAgainst = Number(statsMap.pointsAgainst ?? 0);
-
+          const record = String(sm["overall_summary"] ?? `${wins}-${losses}`);
+          const pointsFor = Number(sm.pointsFor ?? 0);
+          const pointsAgainst = Number(sm.pointsAgainst ?? 0);
           teams.push({
             id: entry.team.id,
             name: entry.team.displayName,
             abbrev: entry.team.abbreviation,
-            wins,
-            losses,
-            ties,
-            record,
-            conference: conf.abbreviation ?? conf.name ?? "",
-            division: div.name ?? "",
-            pointsFor,
-            pointsAgainst,
-            gamesPlayed,
-            avgPointsFor: gamesPlayed > 0 ? pointsFor / gamesPlayed : 0,
-            avgPointsAgainst: gamesPlayed > 0 ? pointsAgainst / gamesPlayed : 0,
+            wins, losses, ties, record, gamesPlayed,
+            avgPointsFor: gamesPlayed > 0 ? Math.round((pointsFor / gamesPlayed) * 10) / 10 : 0,
+            avgPointsAgainst: gamesPlayed > 0 ? Math.round((pointsAgainst / gamesPlayed) * 10) / 10 : 0,
           });
         }
       }
@@ -110,28 +110,19 @@ export async function getStandings(): Promise<TeamRecord[]> {
   }
 }
 
-// ─── Core team stats ──────────────────────────────────────────────────────────
+// ─── Team stats (uses /teams/{id}/statistics — perGameValue built in) ─────────
 
-async function getCoreTeamStats(espnTeamId: string): Promise<Record<string, number>> {
+async function fetchTeamStats(espnTeamId: string): Promise<Record<string, { value: number; perGame: number }>> {
   try {
+    // This endpoint returns data.results.stats.categories with perGameValue on each stat
     const res = await fetch(
-      `${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/teams/${espnTeamId}/statistics`,
+      `${SITE}/teams/${espnTeamId}/statistics`,
       { next: { revalidate: 3600 } }
     );
     if (!res.ok) return {};
     const data = await res.json();
-    const map: Record<string, number> = {};
-    for (const cat of data.splits?.categories ?? []) {
-      for (const stat of cat.stats ?? []) {
-        const val = typeof stat.value === "number"
-          ? stat.value
-          : parseFloat(String(stat.displayValue ?? "0").replace(/,/g, ""));
-        if (!isNaN(val)) map[`${cat.name}__${stat.name}`] = val;
-        // also store by stat name alone (last writer wins, fine for unique names)
-        if (!isNaN(val)) map[stat.name] = val;
-      }
-    }
-    return map;
+    const categories = data.results?.stats?.categories ?? data.splits?.categories ?? [];
+    return statMap(categories);
   } catch {
     return {};
   }
@@ -141,33 +132,35 @@ export async function getAllTeamStats(): Promise<TeamStats[]> {
   const standings = await getStandings();
   if (standings.length === 0) return [];
 
-  const rawStats = await Promise.all(standings.map((t) => getCoreTeamStats(t.id)));
+  const allStats = await Promise.all(standings.map((t) => fetchTeamStats(t.id)));
 
   return standings.map((team, i) => {
-    const s = rawStats[i];
-    const g = team.gamesPlayed;
+    const s = allStats[i];
 
-    const netPassYds = s["netPassingYards"] ?? s["passing__netPassingYards"] ?? 0;
-    const rushYds = s["rushingYards"] ?? s["rushing__rushingYards"] ?? 0;
-    const totalOff = (netPassYds > 0 && rushYds > 0) ? netPassYds + rushYds : 0;
+    const get = (key: string) => s[key]?.value ?? 0;
+    const pg = (key: string) => s[key]?.perGame ?? 0;
+
+    const passYdsPG = get("netPassingYardsPerGame") || get("passingYardsPerGame") || pg("netPassingYards") || (get("netPassingYards") > 0 ? Math.round(get("netPassingYards") / team.gamesPlayed) : 0);
+    const rushYdsPG = pg("rushingYards") || (get("rushingYards") > 0 ? Math.round(get("rushingYards") / team.gamesPlayed) : 0);
 
     return {
       ...team,
-      netPassingYardsPerGame: g > 0 && netPassYds > 0 ? Math.round(netPassYds / g) : 0,
-      rushingYardsPerGame: g > 0 && rushYds > 0 ? Math.round(rushYds / g) : 0,
-      totalOffensiveYardsPerGame: g > 0 && totalOff > 0 ? Math.round(totalOff / g) : 0,
-      passingTouchdowns: Math.round(s["passingTouchdowns"] ?? s["passing__passingTouchdowns"] ?? 0),
-      rushingTouchdowns: Math.round(s["rushingTouchdowns"] ?? s["rushing__rushingTouchdowns"] ?? 0),
-      sacks: Math.round(s["sacks"] ?? s["defensive__sacks"] ?? 0),
-      defensiveInterceptions: Math.round(s["interceptions"] ?? s["defensiveInterceptions__interceptions"] ?? 0),
-      fumblesRecovered: Math.round(s["fumblesRecovered"] ?? s["general__fumblesRecovered"] ?? 0),
-      tacklesForLoss: Math.round(s["tacklesForLoss"] ?? s["defensive__tacklesForLoss"] ?? 0),
-      passesDefended: Math.round(s["passesDefended"] ?? s["defensive__passesDefended"] ?? 0),
+      netPassingYardsPerGame: Math.round(passYdsPG),
+      rushingYardsPerGame: Math.round(rushYdsPG),
+      totalOffensiveYardsPerGame: Math.round(passYdsPG + rushYdsPG),
+      passingTouchdowns: Math.round(get("passingTouchdowns")),
+      rushingTouchdowns: Math.round(get("rushingTouchdowns")),
+      sacks: Math.round(get("sacks")),
+      defensiveInterceptions: Math.round(get("interceptions") || get("defensiveInterceptions")),
+      fumblesRecovered: Math.round(get("fumblesRecovered")),
+      tacklesForLoss: Math.round(get("tacklesForLoss")),
+      passesDefended: Math.round(get("passesDefended")),
     };
   });
 }
 
 // ─── Player leaders ───────────────────────────────────────────────────────────
+// data.stats is an OBJECT (not array) with a .categories array inside
 
 export async function getPlayerLeaders(): Promise<LeaderCategory[]> {
   try {
@@ -178,37 +171,36 @@ export async function getPlayerLeaders(): Promise<LeaderCategory[]> {
     if (!res.ok) return [];
     const data = await res.json();
 
-    const categories: LeaderCategory[] = [];
+    // stats is a single object: { id, name, abbreviation, categories: [...] }
+    const categories = data.stats?.categories ?? [];
+    const result: LeaderCategory[] = [];
 
-    // Real structure: data.stats[].categories[].leaders[]
-    for (const statGroup of data.stats ?? []) {
-      for (const cat of statGroup.categories ?? []) {
-        const leaders: PlayerLeader[] = [];
-        for (const leader of cat.leaders ?? []) {
-          const a = leader.athlete;
-          if (!a) continue;
-          leaders.push({
-            id: a.id ?? "",
-            name: a.displayName ?? a.name ?? "",
-            shortName: a.shortName ?? a.displayName ?? "",
-            position: a.position?.abbreviation ?? a.position?.displayAbbreviation ?? "",
-            teamName: (leader.team ?? a.team)?.displayName ?? "",
-            teamAbbrev: (leader.team ?? a.team)?.abbreviation ?? "",
-            headshotUrl: a.headshot?.href ?? "",
-            value: leader.value ?? 0,
-            displayValue: leader.displayValue ?? String(leader.value ?? 0),
-          });
-        }
-        if (leaders.length > 0) {
-          categories.push({
-            name: cat.name ?? "",
-            displayName: cat.displayName ?? cat.shortDisplayName ?? cat.name ?? "",
-            leaders,
-          });
-        }
+    for (const cat of categories) {
+      const leaders: PlayerLeader[] = [];
+      for (const leader of cat.leaders ?? []) {
+        const a = leader.athlete;
+        if (!a) continue;
+        leaders.push({
+          id: a.id ?? "",
+          name: a.displayName ?? "",
+          shortName: a.shortName ?? a.displayName ?? "",
+          position: a.position?.abbreviation ?? "",
+          teamName: (leader.team ?? a.team)?.displayName ?? "",
+          teamAbbrev: (leader.team ?? a.team)?.abbreviation ?? "",
+          headshotUrl: a.headshot?.href ?? "",
+          value: leader.value ?? 0,
+          displayValue: leader.displayValue ?? String(leader.value ?? 0),
+        });
+      }
+      if (leaders.length > 0) {
+        result.push({
+          name: cat.name ?? "",
+          displayName: cat.displayName ?? cat.shortDisplayName ?? cat.name ?? "",
+          leaders,
+        });
       }
     }
-    return categories;
+    return result;
   } catch {
     return [];
   }
