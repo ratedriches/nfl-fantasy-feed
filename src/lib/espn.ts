@@ -78,32 +78,43 @@ export async function getStandings(): Promise<TeamRecord[]> {
     const data = await res.json();
 
     const teams: TeamRecord[] = [];
-    for (const conf of data.children ?? []) {
-      for (const div of conf.children ?? []) {
-        for (const entry of div.standings?.entries ?? []) {
-          const sm: Record<string, number | string> = {};
-          for (const s of entry.stats ?? []) {
-            if (s.value !== undefined) sm[s.name] = s.value;
-            if (s.summary !== undefined) sm[`${s.name}_summary`] = s.summary;
-          }
-          const wins = Number(sm.wins ?? 0);
-          const losses = Number(sm.losses ?? 0);
-          const ties = Number(sm.ties ?? 0);
-          const gamesPlayed = wins + losses + ties || 17;
-          const record = String(sm["overall_summary"] ?? `${wins}-${losses}`);
-          const pointsFor = Number(sm.pointsFor ?? 0);
-          const pointsAgainst = Number(sm.pointsAgainst ?? 0);
-          teams.push({
-            id: entry.team.id,
-            name: entry.team.displayName,
-            abbrev: entry.team.abbreviation,
-            wins, losses, ties, record, gamesPlayed,
-            avgPointsFor: gamesPlayed > 0 ? Math.round((pointsFor / gamesPlayed) * 10) / 10 : 0,
-            avgPointsAgainst: gamesPlayed > 0 ? Math.round((pointsAgainst / gamesPlayed) * 10) / 10 : 0,
-          });
+
+    const parseEntries = (entries: any[]) => {
+      for (const entry of entries) {
+        const sm: Record<string, number | string> = {};
+        for (const s of entry.stats ?? []) {
+          if (s.value !== undefined) sm[s.name] = s.value;
+          if (s.summary !== undefined) sm[`${s.name}_summary`] = s.summary;
         }
+        const wins = Number(sm.wins ?? 0);
+        const losses = Number(sm.losses ?? 0);
+        const ties = Number(sm.ties ?? 0);
+        const gamesPlayed = wins + losses + ties || 17;
+        const record = String(sm["overall_summary"] ?? `${wins}-${losses}`);
+        const pointsFor = Number(sm.pointsFor ?? 0);
+        const pointsAgainst = Number(sm.pointsAgainst ?? 0);
+        teams.push({
+          id: entry.team.id,
+          name: entry.team.displayName,
+          abbrev: entry.team.abbreviation,
+          wins, losses, ties, record, gamesPlayed,
+          avgPointsFor: gamesPlayed > 0 ? Math.round((pointsFor / gamesPlayed) * 10) / 10 : 0,
+          avgPointsAgainst: gamesPlayed > 0 ? Math.round((pointsAgainst / gamesPlayed) * 10) / 10 : 0,
+        });
+      }
+    };
+
+    for (const conf of data.children ?? []) {
+      // Structure varies — sometimes conf > div > entries, sometimes conf > entries directly
+      if (conf.children?.length > 0) {
+        for (const div of conf.children) {
+          parseEntries(div.standings?.entries ?? []);
+        }
+      } else {
+        parseEntries(conf.standings?.entries ?? []);
       }
     }
+
     return teams.sort((a, b) => b.wins - a.wins || a.losses - b.losses);
   } catch {
     return [];
