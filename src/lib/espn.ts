@@ -170,43 +170,108 @@ export async function getAllTeamStats(): Promise<TeamStats[]> {
   });
 }
 
-// ─── Player leaders ───────────────────────────────────────────────────────────
-// data.stats is an OBJECT (not array) with a .categories array inside
+// ─── Player leaders (core API — real full-season data) ────────────────────────
+
+// ESPN team ID → abbreviation
+const TEAM_ID_TO_ABBREV: Record<string, string> = {
+  "1":"ATL","2":"BUF","3":"CHI","4":"CIN","5":"CLE","6":"DAL","7":"DEN",
+  "8":"DET","9":"GB","10":"TEN","11":"IND","12":"KC","13":"LV","14":"LAR",
+  "15":"MIA","16":"MIN","17":"NE","18":"NO","19":"NYG","20":"NYJ","21":"PHI",
+  "22":"ARI","23":"PIT","24":"LAC","25":"SF","26":"SEA","27":"TB","28":"WAS",
+  "29":"CAR","30":"JAX","33":"BAL","34":"HOU",
+};
+
+function teamIdFromRef(ref: string): string {
+  const m = ref.match(/teams\/(\d+)/);
+  return m ? m[1] : "";
+}
+
+async function fetchAthleteDetails(athleteRef: string): Promise<{
+  id: string; name: string; shortName: string; position: string;
+  teamAbbrev: string; headshotUrl: string;
+}> {
+  try {
+    const res = await fetch(athleteRef, { next: { revalidate: 3600 } });
+    if (!res.ok) return { id: "", name: "", shortName: "", position: "", teamAbbrev: "", headshotUrl: "" };
+    const d = await res.json();
+    const teamId = teamIdFromRef(d.team?.$ref ?? "");
+    return {
+      id: d.id ?? "",
+      name: d.displayName ?? "",
+      shortName: d.shortName ?? d.displayName ?? "",
+      position: d.position?.abbreviation ?? "",
+      teamAbbrev: TEAM_ID_TO_ABBREV[teamId] ?? "",
+      headshotUrl: d.headshot?.href ?? "",
+    };
+  } catch {
+    return { id: "", name: "", shortName: "", position: "", teamAbbrev: "", headshotUrl: "" };
+  }
+}
 
 export async function getPlayerLeaders(): Promise<LeaderCategory[]> {
   try {
     const res = await fetch(
-      `${SITE}/statistics?season=${SEASON}&seasontype=${SEASON_TYPE}`,
-      { cache: "no-store" }
+      `${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders`,
+      { next: { revalidate: 3600 } }
     );
     if (!res.ok) return [];
     const data = await res.json();
 
-    // stats is a single object: { id, name, abbreviation, categories: [...] }
-    const categories = data.stats?.categories ?? [];
-    const result: LeaderCategory[] = [];
+    // Collect all unique athlete $refs across all categories
+    const categories = data.categories ?? [];
+    const refToValue = new Map<string, { value: number; displayValue: string }[]>();
+    const catData: { name: string; leaders: { ref: string; value: number; displayValue: string }[] }[] = [];
 
     for (const cat of categories) {
-      const leaders: PlayerLeader[] = [];
+      const catLeaders: { ref: string; value: number; displayValue: string }[] = [];
       for (const leader of cat.leaders ?? []) {
-        const a = leader.athlete;
-        if (!a) continue;
+        const ref = leader.athlete?.$ref;
+        if (!ref) continue;
+        catLeaders.push({ ref, value: leader.value ?? 0, displayValue: leader.displayValue ?? "" });
+        if (!refToValue.has(ref)) refToValue.set(ref, []);
+      }
+      catData.push({ name: cat.name ?? "", leaders: catLeaders });
+    }
+
+    // Batch fetch all unique athletes in parallel
+    const uniqueRefs = Array.from(refToValue.keys());
+    const athleteDetails = await Promise.all(uniqueRefs.map(fetchAthleteDetails));
+    const refToAthleteMap = new Map<string, typeof athleteDetails[0]>();
+    uniqueRefs.forEach((ref, i) => refToAthleteMap.set(ref, athleteDetails[i]));
+
+    // Category display names
+    const CAT_NAMES: Record<string, string> = {
+      passingYards: "Passing Yards", rushingYards: "Rushing Yards",
+      receivingYards: "Receiving Yards", totalTackles: "Total Tackles",
+      sacks: "Sacks", interceptions: "Interceptions",
+      passingTouchdowns: "Passing TDs", rushingTouchdowns: "Rushing TDs",
+      receivingTouchdowns: "Receiving TDs", receptions: "Receptions",
+      quarterbackRating: "QB Rating", passesDefended: "Passes Defended",
+      totalTouchdowns: "Total TDs", totalPoints: "Total Points",
+    };
+
+    const result: LeaderCategory[] = [];
+    for (const cat of catData) {
+      const leaders: PlayerLeader[] = [];
+      for (const l of cat.leaders) {
+        const athlete = refToAthleteMap.get(l.ref);
+        if (!athlete?.id) continue;
         leaders.push({
-          id: a.id ?? "",
-          name: a.displayName ?? "",
-          shortName: a.shortName ?? a.displayName ?? "",
-          position: a.position?.abbreviation ?? "",
-          teamName: (leader.team ?? a.team)?.displayName ?? "",
-          teamAbbrev: (leader.team ?? a.team)?.abbreviation ?? "",
-          headshotUrl: a.headshot?.href ?? "",
-          value: leader.value ?? 0,
-          displayValue: leader.displayValue ?? String(leader.value ?? 0),
+          id: athlete.id,
+          name: athlete.name,
+          shortName: athlete.shortName,
+          position: athlete.position,
+          teamName: athlete.teamAbbrev,
+          teamAbbrev: athlete.teamAbbrev,
+          headshotUrl: athlete.headshotUrl,
+          value: l.value,
+          displayValue: l.displayValue,
         });
       }
       if (leaders.length > 0) {
         result.push({
-          name: cat.name ?? "",
-          displayName: cat.displayName ?? cat.shortDisplayName ?? cat.name ?? "",
+          name: cat.name,
+          displayName: CAT_NAMES[cat.name] ?? cat.name,
           leaders,
         });
       }
