@@ -124,7 +124,7 @@ export default function PlayerStatsClient() {
       {tab === "QB" && (
         <StatsTable
           headers={["Pass Yds", "TD", "INT", "Comp%", "Rating", "Rush Yds"]}
-          rows={data.passers.slice(0, 25).map((p) => ({
+          rows={data.passers.slice(0, 25).map((p) => ({  // top 25
             player: p,
             cells: [
               fmt(p.passingYards),
@@ -141,7 +141,7 @@ export default function PlayerStatsClient() {
       {tab === "RB" && (
         <StatsTable
           headers={["Rush Yds", "Att", "Rush TD", "Rec", "Rec Yds", "Rec TD"]}
-          rows={data.rushers.slice(0, 25).map((p) => ({
+          rows={data.rushers.slice(0, 50).map((p) => ({  // top 50
             player: p,
             cells: [
               fmt(p.rushingYards),
@@ -158,7 +158,7 @@ export default function PlayerStatsClient() {
       {tab === "WR" && (
         <StatsTable
           headers={["Rec Yds", "Rec", "Targets", "TD", "Yds/Rec"]}
-          rows={data.wideReceivers.slice(0, 25).map((p) => ({
+          rows={data.wideReceivers.slice(0, 100).map((p) => ({  // top 100
             player: p,
             cells: [
               fmt(p.receivingYards),
@@ -174,7 +174,7 @@ export default function PlayerStatsClient() {
       {tab === "TE" && (
         <StatsTable
           headers={["Rec Yds", "Rec", "Targets", "TD", "Yds/Rec"]}
-          rows={data.tightEnds.slice(0, 25).map((p) => ({
+          rows={data.tightEnds.slice(0, 25).map((p) => ({  // top 25
             player: p,
             cells: [
               fmt(p.receivingYards),
@@ -190,7 +190,7 @@ export default function PlayerStatsClient() {
       {tab === "Defense" && (
         <StatsTable
           headers={["Tackles", "Sacks", "TFL", "INTs", "PD"]}
-          rows={data.defenders.slice(0, 25).map((p) => ({
+          rows={data.defenders.slice(0, 25).map((p) => ({  // top 25
             player: p,
             cells: [
               fmt(p.totalTackles),
@@ -203,7 +203,7 @@ export default function PlayerStatsClient() {
         />
       )}
 
-      <p className="mt-2 text-xs text-gray-600">Top 25 per position · 2025 regular season</p>
+      <p className="mt-2 text-xs text-gray-600">QB: top 25 · RB: top 50 · WR: top 100 · TE: top 25 · Defense: top 25 · 2025 regular season</p>
     </div>
   );
 }

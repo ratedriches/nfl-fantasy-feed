@@ -120,23 +120,25 @@ function buildPlayer(
 
 export async function GET() {
   try {
-    // Fetch leader lists — use limit=200 for receiving to capture all TEs
-    const [leadersRes, recLeadersRes] = await Promise.all([
+    // Fetch leader lists — limit=50 for rushing, limit=200 for receiving to capture all TEs
+    const [leadersRes, rushLeadersRes, recLeadersRes] = await Promise.all([
       fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders`, { next: { revalidate: 3600 } }),
+      fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=50`, { next: { revalidate: 3600 } }),
       fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=200`, { next: { revalidate: 3600 } }),
     ]);
 
     if (!leadersRes.ok) return Response.json({ error: "Failed to fetch leaders" }, { status: 500 });
 
     const leadersData = await leadersRes.json();
-    const recData = recLeadersRes.ok ? await recLeadersRes.json() : leadersData;
+    const rushData = rushLeadersRes.ok ? await rushLeadersRes.json() : leadersData;
+    const recData  = recLeadersRes.ok  ? await recLeadersRes.json()  : leadersData;
 
     const getCategory = (data: any, name: string) =>
       data.categories?.find((c: any) => c.name === name)?.leaders ?? [];
 
     const passLeaders   = getCategory(leadersData, "passingYards");
-    const rushLeaders   = getCategory(leadersData, "rushingYards");
-    const recLeaders    = getCategory(recData, "receivingYards");     // limit=50
+    const rushLeaders   = getCategory(rushData,    "rushingYards");   // limit=50
+    const recLeaders    = getCategory(recData,     "receivingYards"); // limit=200
     const tackleLeaders = getCategory(leadersData, "totalTackles");
 
     // Collect all unique athletes needed (by athlete ref)
