@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { LeaderCategory, PlayerLeader } from "@/lib/espn";
+import type { EnrichedPlayer } from "@/app/api/player-stats/route";
 
 type Tab = "QB" | "RB" | "WR" | "TE" | "Defense";
 
-function lookup(categories: LeaderCategory[], name: string): Map<string, string> {
-  const map = new Map<string, string>();
-  const cat = categories.find((c) => c.name === name);
-  for (const l of cat?.leaders ?? []) map.set(l.id, l.displayValue);
-  return map;
+interface StatsData {
+  passers: EnrichedPlayer[];
+  rushers: EnrichedPlayer[];
+  wideReceivers: EnrichedPlayer[];
+  tightEnds: EnrichedPlayer[];
+  defenders: EnrichedPlayer[];
 }
 
-function PlayerRow({ rank, player, cells }: { rank: number; player: PlayerLeader; cells: string[] }) {
+function fmt(val: number | undefined, decimals = 0): string {
+  if (!val && val !== 0) return "—";
+  return decimals > 0 ? val.toFixed(decimals) : Math.round(val).toLocaleString();
+}
+
+function PlayerRow({ rank, player, cells }: { rank: number; player: EnrichedPlayer; cells: string[] }) {
   return (
     <tr className="border-b border-gray-800">
       <td className="px-2 py-2.5 text-center text-xs text-gray-600">{rank}</td>
@@ -38,10 +44,8 @@ function PlayerRow({ rank, player, cells }: { rank: number; player: PlayerLeader
   );
 }
 
-function StatsTable({ headers, rows }: { headers: string[]; rows: { player: PlayerLeader; cells: string[] }[] }) {
-  if (rows.length === 0) {
-    return <p className="py-8 text-center text-sm text-gray-500">No data available.</p>;
-  }
+function StatsTable({ headers, rows }: { headers: string[]; rows: { player: EnrichedPlayer; cells: string[] }[] }) {
+  if (rows.length === 0) return <p className="py-8 text-center text-sm text-gray-500">No data available.</p>;
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-800">
       <table className="w-full text-xs">
@@ -65,7 +69,7 @@ function StatsTable({ headers, rows }: { headers: string[]; rows: { player: Play
 }
 
 export default function PlayerStatsClient() {
-  const [categories, setCategories] = useState<LeaderCategory[]>([]);
+  const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [tab, setTab] = useState<Tab>("QB");
@@ -73,8 +77,8 @@ export default function PlayerStatsClient() {
   useEffect(() => {
     fetch("/api/player-stats")
       .then((r) => r.json())
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) setCategories(data);
+      .then((d) => {
+        if (d.passers?.length > 0) setData(d);
         else setError(true);
       })
       .catch(() => setError(true))
@@ -90,7 +94,7 @@ export default function PlayerStatsClient() {
     );
   }
 
-  if (error || categories.length === 0) {
+  if (error || !data) {
     return (
       <div className="py-10 text-center">
         <p className="text-gray-400">Unable to load player stats.</p>
@@ -98,27 +102,6 @@ export default function PlayerStatsClient() {
       </div>
     );
   }
-
-  const passTDs  = lookup(categories, "passingTouchdowns");
-  const rating   = lookup(categories, "quarterbackRating");
-  const rushYds  = lookup(categories, "rushingYards");
-  const rushTDs  = lookup(categories, "rushingTouchdowns");
-  const rec      = lookup(categories, "receptions");
-  const recYds   = lookup(categories, "receivingYards");
-  const recTDs   = lookup(categories, "receivingTouchdowns");
-  const tackles  = lookup(categories, "totalTackles");
-  const sacks    = lookup(categories, "sacks");
-  const ints     = lookup(categories, "interceptions");
-  const pd       = lookup(categories, "passesDefended");
-
-  const passLeaders = categories.find((c) => c.name === "passingYards")?.leaders ?? [];
-  const rushLeaders = categories.find((c) => c.name === "rushingYards")?.leaders ?? [];
-  const recLeaders  = categories.find((c) => c.name === "receivingYards")?.leaders ?? [];
-  const defLeaders  = categories.find((c) => c.name === "totalTackles")?.leaders ?? [];
-
-  // Separate WR and TE by position field
-  const wrLeaders = recLeaders.filter((p) => p.position === "WR");
-  const teLeaders = recLeaders.filter((p) => p.position === "TE");
 
   const tabs: Tab[] = ["QB", "RB", "WR", "TE", "Defense"];
 
@@ -140,50 +123,82 @@ export default function PlayerStatsClient() {
 
       {tab === "QB" && (
         <StatsTable
-          headers={["Pass Yds", "TD", "Rating", "Rush Yds"]}
-          rows={passLeaders.slice(0, 25).map((p) => ({
+          headers={["Pass Yds", "TD", "INT", "Comp%", "Rating", "Rush Yds"]}
+          rows={data.passers.slice(0, 25).map((p) => ({
             player: p,
-            cells: [p.displayValue, passTDs.get(p.id) ?? "—", rating.get(p.id) ?? "—", rushYds.get(p.id) ?? "—"],
+            cells: [
+              fmt(p.passingYards),
+              fmt(p.passingTouchdowns),
+              fmt(p.interceptions),
+              fmt(p.completionPct, 1),
+              fmt(p.QBRating, 1),
+              fmt(p.rushingYards),
+            ],
           }))}
         />
       )}
 
       {tab === "RB" && (
         <StatsTable
-          headers={["Rush Yds", "Rush TD", "Rec", "Rec Yds"]}
-          rows={rushLeaders.slice(0, 25).map((p) => ({
+          headers={["Rush Yds", "Att", "Rush TD", "Rec", "Rec Yds", "Rec TD"]}
+          rows={data.rushers.slice(0, 25).map((p) => ({
             player: p,
-            cells: [p.displayValue, rushTDs.get(p.id) ?? "—", rec.get(p.id) ?? "—", recYds.get(p.id) ?? "—"],
+            cells: [
+              fmt(p.rushingYards),
+              fmt(p.rushingAttempts),
+              fmt(p.rushingTouchdowns),
+              fmt(p.receptions),
+              fmt(p.receivingYards),
+              fmt(p.receivingTouchdowns),
+            ],
           }))}
         />
       )}
 
       {tab === "WR" && (
         <StatsTable
-          headers={["Rec Yds", "Rec", "TD"]}
-          rows={wrLeaders.slice(0, 25).map((p) => ({
+          headers={["Rec Yds", "Rec", "Targets", "TD", "Yds/Rec"]}
+          rows={data.wideReceivers.slice(0, 25).map((p) => ({
             player: p,
-            cells: [p.displayValue, rec.get(p.id) ?? "—", recTDs.get(p.id) ?? "—"],
+            cells: [
+              fmt(p.receivingYards),
+              fmt(p.receptions),
+              fmt(p.receivingTargets),
+              fmt(p.receivingTouchdowns),
+              p.receptions > 0 ? fmt(p.receivingYards / p.receptions, 1) : "—",
+            ],
           }))}
         />
       )}
 
       {tab === "TE" && (
         <StatsTable
-          headers={["Rec Yds", "Rec", "TD"]}
-          rows={teLeaders.slice(0, 25).map((p) => ({
+          headers={["Rec Yds", "Rec", "Targets", "TD", "Yds/Rec"]}
+          rows={data.tightEnds.slice(0, 25).map((p) => ({
             player: p,
-            cells: [p.displayValue, rec.get(p.id) ?? "—", recTDs.get(p.id) ?? "—"],
+            cells: [
+              fmt(p.receivingYards),
+              fmt(p.receptions),
+              fmt(p.receivingTargets),
+              fmt(p.receivingTouchdowns),
+              p.receptions > 0 ? fmt(p.receivingYards / p.receptions, 1) : "—",
+            ],
           }))}
         />
       )}
 
       {tab === "Defense" && (
         <StatsTable
-          headers={["Tackles", "Sacks", "INTs", "PD"]}
-          rows={defLeaders.slice(0, 25).map((p) => ({
+          headers={["Tackles", "Sacks", "TFL", "INTs", "PD"]}
+          rows={data.defenders.slice(0, 25).map((p) => ({
             player: p,
-            cells: [p.displayValue, sacks.get(p.id) ?? "—", ints.get(p.id) ?? "—", pd.get(p.id) ?? "—"],
+            cells: [
+              fmt(p.totalTackles),
+              fmt(p.sacks),
+              fmt(p.tacklesForLoss),
+              fmt(p.defensiveInterceptions),
+              fmt(p.passesDefended),
+            ],
           }))}
         />
       )}
