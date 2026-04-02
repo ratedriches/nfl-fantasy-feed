@@ -1,12 +1,7 @@
 import Link from "next/link";
-import { getPlayerLeaders } from "@/lib/espn";
-import PlayerStatsTabs from "@/components/PlayerStatsTabs";
+import PlayerStatsClient from "@/components/PlayerStatsClient";
 
-export const revalidate = 3600;
-
-export default async function PlayerStatsPage() {
-  const categories = await getPlayerLeaders();
-
+export default function PlayerStatsPage() {
   return (
     <div className="min-h-screen bg-gray-950">
       <header className="border-b border-gray-800 bg-gray-900 px-4 py-4">
@@ -18,14 +13,7 @@ export default async function PlayerStatsPage() {
       </header>
 
       <main className="px-4 py-5">
-        {categories.length === 0 ? (
-          <div className="py-10 text-center">
-            <p className="text-gray-400">Unable to load player stats.</p>
-            <p className="mt-1 text-xs text-gray-600">ESPN API may be unavailable. Try again later.</p>
-          </div>
-        ) : (
-          <PlayerStatsTabs categories={categories} />
-        )}
+        <PlayerStatsClient />
       </main>
     </div>
   );
