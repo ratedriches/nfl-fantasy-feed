@@ -15,7 +15,7 @@ export default function TeamStatsTable({ teams }: { teams: TeamStats[] }) {
       setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     } else {
       setSortKey(key);
-      setSortDir(key === "avgPointsAgainst" || key === "yardsAllowed" ? "asc" : "desc");
+      setSortDir(key === "avgPointsAgainst" ? "asc" : "desc");
     }
   }
 
@@ -33,18 +33,19 @@ export default function TeamStatsTable({ teams }: { teams: TeamStats[] }) {
 
   const offenseCols = [
     { key: "avgPointsFor", label: "Pts/G", title: "Points Per Game" },
-    { key: "totalOffensiveYards", label: "Yds/G", title: "Total Yards Per Game" },
-    { key: "netPassingYards", label: "Pass/G", title: "Net Passing Yards Per Game" },
-    { key: "rushingYards", label: "Rush/G", title: "Rushing Yards Per Game" },
+    { key: "totalOffensiveYardsPerGame", label: "Yds/G", title: "Total Yards Per Game" },
+    { key: "netPassingYardsPerGame", label: "Pass/G", title: "Net Passing Yards Per Game" },
+    { key: "rushingYardsPerGame", label: "Rush/G", title: "Rushing Yards Per Game" },
     { key: "passingTouchdowns", label: "Pass TD", title: "Passing Touchdowns" },
     { key: "rushingTouchdowns", label: "Rush TD", title: "Rushing Touchdowns" },
   ];
 
   const defenseCols = [
     { key: "avgPointsAgainst", label: "Pts All/G", title: "Points Allowed Per Game" },
-    { key: "yardsAllowed", label: "Yds All/G", title: "Yards Allowed Per Game" },
     { key: "sacks", label: "Sacks", title: "Sacks" },
     { key: "defensiveInterceptions", label: "INTs", title: "Defensive Interceptions" },
+    { key: "tacklesForLoss", label: "TFL", title: "Tackles For Loss" },
+    { key: "passesDefended", label: "PD", title: "Passes Defended" },
     { key: "fumblesRecovered", label: "Fum Rec", title: "Fumbles Recovered" },
   ];
 

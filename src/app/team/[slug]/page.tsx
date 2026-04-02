@@ -30,10 +30,10 @@ export default async function TeamPage({
         style={{ backgroundColor: team.primaryColor + "22" }}
       >
         <Link
-          href="/"
+          href="/beat-writers"
           className="mb-3 inline-flex items-center gap-1 text-xs text-gray-400 active:text-white"
         >
-          ← All Teams
+          ← Beat Writers
         </Link>
         <div className="flex items-center gap-3">
           <img
