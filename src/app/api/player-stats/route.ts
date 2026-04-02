@@ -120,10 +120,10 @@ function buildPlayer(
 
 export async function GET() {
   try {
-    // Fetch leader lists — use limit=50 for receiving to get enough TEs
+    // Fetch leader lists — use limit=200 for receiving to capture all TEs
     const [leadersRes, recLeadersRes] = await Promise.all([
       fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders`, { next: { revalidate: 3600 } }),
-      fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=50`, { next: { revalidate: 3600 } }),
+      fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=200`, { next: { revalidate: 3600 } }),
     ]);
 
     if (!leadersRes.ok) return Response.json({ error: "Failed to fetch leaders" }, { status: 500 });
