@@ -4,43 +4,20 @@ import { useState } from "react";
 import Link from "next/link";
 import { teams } from "@/data/teams";
 import SearchResults from "@/components/SearchResults";
+import NavTabs from "@/components/NavTabs";
 
 export default function Home() {
   const [query, setQuery] = useState("");
 
   const divisions = [
-    {
-      name: "AFC East",
-      teams: ["buffalo-bills", "miami-dolphins", "new-england-patriots", "new-york-jets"],
-    },
-    {
-      name: "AFC North",
-      teams: ["baltimore-ravens", "cincinnati-bengals", "cleveland-browns", "pittsburgh-steelers"],
-    },
-    {
-      name: "AFC South",
-      teams: ["houston-texans", "indianapolis-colts", "jacksonville-jaguars", "tennessee-titans"],
-    },
-    {
-      name: "AFC West",
-      teams: ["denver-broncos", "kansas-city-chiefs", "las-vegas-raiders", "los-angeles-chargers"],
-    },
-    {
-      name: "NFC East",
-      teams: ["dallas-cowboys", "new-york-giants", "philadelphia-eagles", "washington-commanders"],
-    },
-    {
-      name: "NFC North",
-      teams: ["chicago-bears", "detroit-lions", "green-bay-packers", "minnesota-vikings"],
-    },
-    {
-      name: "NFC South",
-      teams: ["atlanta-falcons", "carolina-panthers", "new-orleans-saints", "tampa-bay-buccaneers"],
-    },
-    {
-      name: "NFC West",
-      teams: ["arizona-cardinals", "los-angeles-rams", "san-francisco-49ers", "seattle-seahawks"],
-    },
+    { name: "AFC East", teams: ["buffalo-bills", "miami-dolphins", "new-england-patriots", "new-york-jets"] },
+    { name: "AFC North", teams: ["baltimore-ravens", "cincinnati-bengals", "cleveland-browns", "pittsburgh-steelers"] },
+    { name: "AFC South", teams: ["houston-texans", "indianapolis-colts", "jacksonville-jaguars", "tennessee-titans"] },
+    { name: "AFC West", teams: ["denver-broncos", "kansas-city-chiefs", "las-vegas-raiders", "los-angeles-chargers"] },
+    { name: "NFC East", teams: ["dallas-cowboys", "new-york-giants", "philadelphia-eagles", "washington-commanders"] },
+    { name: "NFC North", teams: ["chicago-bears", "detroit-lions", "green-bay-packers", "minnesota-vikings"] },
+    { name: "NFC South", teams: ["atlanta-falcons", "carolina-panthers", "new-orleans-saints", "tampa-bay-buccaneers"] },
+    { name: "NFC West", teams: ["arizona-cardinals", "los-angeles-rams", "san-francisco-49ers", "seattle-seahawks"] },
   ];
 
   const teamsBySlug = Object.fromEntries(teams.map((t) => [t.slug, t]));
@@ -48,22 +25,19 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-950">
-      {/* Header */}
+      {/* App header */}
       <header className="border-b border-gray-800 bg-gray-900 px-4 py-4">
-        <h1 className="text-xl font-bold tracking-tight text-white">
-          🏈 NFL Fantasy Feed
-        </h1>
-        <p className="mt-0.5 text-xs text-gray-400">
-          Latest beat writer news · all 32 teams
-        </p>
+        <h1 className="text-xl font-bold tracking-tight text-white">🏈 NFL Fantasy Feed</h1>
+        <p className="mt-0.5 text-xs text-gray-400">Beat writers & stats for all 32 teams</p>
       </header>
+
+      {/* Tab nav */}
+      <NavTabs />
 
       {/* Search bar */}
       <div className="border-b border-gray-800 bg-gray-900 px-4 py-3">
         <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">
-            🔍
-          </span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">🔍</span>
           <input
             type="text"
             value={query}
@@ -82,7 +56,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Main */}
+      {/* Content */}
       <main className="px-4 py-5">
         {isSearching ? (
           <SearchResults query={query} />
