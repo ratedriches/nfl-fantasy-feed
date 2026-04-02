@@ -13,39 +13,55 @@ interface StatsData {
   defenders: EnrichedPlayer[];
 }
 
+interface Col {
+  label: string;
+  key: keyof EnrichedPlayer;
+  decimals?: number;
+  compute?: (p: EnrichedPlayer) => number;
+}
+
 function fmt(val: number | undefined, decimals = 0): string {
-  if (!val && val !== 0) return "—";
+  if (val === undefined || val === null || isNaN(val)) return "—";
   return decimals > 0 ? val.toFixed(decimals) : Math.round(val).toLocaleString();
 }
 
-function PlayerRow({ rank, player, cells }: { rank: number; player: EnrichedPlayer; cells: string[] }) {
-  return (
-    <tr className="border-b border-gray-800">
-      <td className="px-2 py-2.5 text-center text-xs text-gray-600">{rank}</td>
-      <td className="sticky left-0 bg-gray-950 px-2 py-2.5">
-        <div className="flex items-center gap-2">
-          {player.headshotUrl ? (
-            <img src={player.headshotUrl} alt={player.shortName} className="h-7 w-7 rounded-full object-cover" />
-          ) : (
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-800 text-xs font-bold text-gray-400">
-              {player.name.charAt(0)}
-            </div>
-          )}
-          <div className="min-w-0">
-            <p className="truncate text-xs font-semibold text-white">{player.shortName}</p>
-            <p className="text-xs text-gray-500">{player.teamAbbrev}</p>
-          </div>
-        </div>
-      </td>
-      {cells.map((cell, i) => (
-        <td key={i} className="px-2 py-2.5 text-right text-xs text-gray-300">{cell || "—"}</td>
-      ))}
-    </tr>
-  );
-}
+function SortableTable({
+  cols,
+  players,
+  defaultSortKey,
+}: {
+  cols: Col[];
+  players: EnrichedPlayer[];
+  defaultSortKey: keyof EnrichedPlayer;
+}) {
+  const [sortKey, setSortKey] = useState<keyof EnrichedPlayer>(defaultSortKey);
+  const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
-function StatsTable({ headers, rows }: { headers: string[]; rows: { player: EnrichedPlayer; cells: string[] }[] }) {
-  if (rows.length === 0) return <p className="py-8 text-center text-sm text-gray-500">No data available.</p>;
+  function handleSort(key: keyof EnrichedPlayer) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  }
+
+  const colForKey = (key: keyof EnrichedPlayer) => cols.find((c) => c.key === key);
+
+  const sorted = [...players].sort((a, b) => {
+    const col = colForKey(sortKey);
+    const av = col?.compute ? col.compute(a) : (a[sortKey] as number) ?? 0;
+    const bv = col?.compute ? col.compute(b) : (b[sortKey] as number) ?? 0;
+    return sortDir === "desc" ? bv - av : av - bv;
+  });
+
+  function cellValue(p: EnrichedPlayer, col: Col): string {
+    if (col.compute) return fmt(col.compute(p), col.decimals ?? 0);
+    return fmt(p[col.key] as number, col.decimals ?? 0);
+  }
+
+  if (players.length === 0) return <p className="py-8 text-center text-sm text-gray-500">No data available.</p>;
+
   return (
     <div className="overflow-x-auto rounded-xl border border-gray-800">
       <table className="w-full text-xs">
@@ -53,14 +69,52 @@ function StatsTable({ headers, rows }: { headers: string[]; rows: { player: Enri
           <tr className="border-b border-gray-800 bg-gray-900">
             <th className="px-2 py-3 text-center text-gray-400">#</th>
             <th className="sticky left-0 bg-gray-900 px-2 py-3 text-left text-gray-400">Player</th>
-            {headers.map((h) => (
-              <th key={h} className="px-2 py-3 text-right text-gray-400">{h}</th>
+            {cols.map((col) => (
+              <th
+                key={col.key}
+                onClick={() => handleSort(col.key)}
+                className={`cursor-pointer px-2 py-3 text-right font-semibold transition-colors ${
+                  sortKey === col.key ? "text-white" : "text-gray-400"
+                }`}
+              >
+                {col.label}
+                {sortKey === col.key && (
+                  <span className="ml-1">{sortDir === "desc" ? "↓" : "↑"}</span>
+                )}
+              </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map(({ player, cells }, i) => (
-            <PlayerRow key={player.id} rank={i + 1} player={player} cells={cells} />
+          {sorted.map((player, i) => (
+            <tr key={player.id} className="border-b border-gray-800">
+              <td className="px-2 py-2.5 text-center text-xs text-gray-600">{i + 1}</td>
+              <td className="sticky left-0 bg-gray-950 px-2 py-2.5">
+                <div className="flex items-center gap-2">
+                  {player.headshotUrl ? (
+                    <img src={player.headshotUrl} alt={player.shortName} className="h-7 w-7 rounded-full object-cover" />
+                  ) : (
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-800 text-xs font-bold text-gray-400">
+                      {player.name.charAt(0)}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-white">{player.shortName}</p>
+                    <p className="text-xs text-gray-500">{player.teamAbbrev}</p>
+                  </div>
+                </div>
+              </td>
+              {cols.map((col) => (
+                <td
+                  key={col.key}
+                  className={`px-2 py-2.5 text-right text-xs ${
+                    sortKey === col.key ? "font-semibold text-white" : "text-gray-300"
+                  }`}
+                >
+                  {cellValue(player, col)}
+                </td>
+              ))}
+            </tr>
           ))}
         </tbody>
       </table>
@@ -105,6 +159,45 @@ export default function PlayerStatsClient() {
 
   const tabs: Tab[] = ["QB", "RB", "WR", "TE", "Defense"];
 
+  const qbCols: Col[] = [
+    { label: "Pass Yds", key: "passingYards" },
+    { label: "TD",       key: "passingTouchdowns" },
+    { label: "INT",      key: "interceptions" },
+    { label: "Comp%",    key: "completionPct", decimals: 1 },
+    { label: "Rating",   key: "QBRating", decimals: 1 },
+    { label: "Rush Yds", key: "rushingYards" },
+  ];
+
+  const rbCols: Col[] = [
+    { label: "Rush Yds", key: "rushingYards" },
+    { label: "Att",      key: "rushingAttempts" },
+    { label: "Rush TD",  key: "rushingTouchdowns" },
+    { label: "Rec",      key: "receptions" },
+    { label: "Rec Yds",  key: "receivingYards" },
+    { label: "Rec TD",   key: "receivingTouchdowns" },
+  ];
+
+  const recCols: Col[] = [
+    { label: "Rec Yds",  key: "receivingYards" },
+    { label: "Rec",      key: "receptions" },
+    { label: "Targets",  key: "receivingTargets" },
+    { label: "TD",       key: "receivingTouchdowns" },
+    {
+      label: "Yds/Rec",
+      key: "receivingYards",
+      decimals: 1,
+      compute: (p) => (p.receptions > 0 ? p.receivingYards / p.receptions : 0),
+    },
+  ];
+
+  const defCols: Col[] = [
+    { label: "Tackles", key: "totalTackles" },
+    { label: "Sacks",   key: "sacks" },
+    { label: "TFL",     key: "tacklesForLoss" },
+    { label: "INTs",    key: "defensiveInterceptions" },
+    { label: "PD",      key: "passesDefended" },
+  ];
+
   return (
     <div>
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
@@ -121,89 +214,13 @@ export default function PlayerStatsClient() {
         ))}
       </div>
 
-      {tab === "QB" && (
-        <StatsTable
-          headers={["Pass Yds", "TD", "INT", "Comp%", "Rating", "Rush Yds"]}
-          rows={data.passers.slice(0, 25).map((p) => ({  // top 25
-            player: p,
-            cells: [
-              fmt(p.passingYards),
-              fmt(p.passingTouchdowns),
-              fmt(p.interceptions),
-              fmt(p.completionPct, 1),
-              fmt(p.QBRating, 1),
-              fmt(p.rushingYards),
-            ],
-          }))}
-        />
-      )}
+      {tab === "QB"      && <SortableTable cols={qbCols}  players={data.passers.slice(0, 25)}          defaultSortKey="passingYards" />}
+      {tab === "RB"      && <SortableTable cols={rbCols}  players={data.rushers.slice(0, 50)}          defaultSortKey="rushingYards" />}
+      {tab === "WR"      && <SortableTable cols={recCols} players={data.wideReceivers.slice(0, 100)}   defaultSortKey="receivingYards" />}
+      {tab === "TE"      && <SortableTable cols={recCols} players={data.tightEnds.slice(0, 25)}        defaultSortKey="receivingYards" />}
+      {tab === "Defense" && <SortableTable cols={defCols} players={data.defenders.slice(0, 25)}        defaultSortKey="totalTackles" />}
 
-      {tab === "RB" && (
-        <StatsTable
-          headers={["Rush Yds", "Att", "Rush TD", "Rec", "Rec Yds", "Rec TD"]}
-          rows={data.rushers.slice(0, 50).map((p) => ({  // top 50
-            player: p,
-            cells: [
-              fmt(p.rushingYards),
-              fmt(p.rushingAttempts),
-              fmt(p.rushingTouchdowns),
-              fmt(p.receptions),
-              fmt(p.receivingYards),
-              fmt(p.receivingTouchdowns),
-            ],
-          }))}
-        />
-      )}
-
-      {tab === "WR" && (
-        <StatsTable
-          headers={["Rec Yds", "Rec", "Targets", "TD", "Yds/Rec"]}
-          rows={data.wideReceivers.slice(0, 100).map((p) => ({  // top 100
-            player: p,
-            cells: [
-              fmt(p.receivingYards),
-              fmt(p.receptions),
-              fmt(p.receivingTargets),
-              fmt(p.receivingTouchdowns),
-              p.receptions > 0 ? fmt(p.receivingYards / p.receptions, 1) : "—",
-            ],
-          }))}
-        />
-      )}
-
-      {tab === "TE" && (
-        <StatsTable
-          headers={["Rec Yds", "Rec", "Targets", "TD", "Yds/Rec"]}
-          rows={data.tightEnds.slice(0, 25).map((p) => ({  // top 25
-            player: p,
-            cells: [
-              fmt(p.receivingYards),
-              fmt(p.receptions),
-              fmt(p.receivingTargets),
-              fmt(p.receivingTouchdowns),
-              p.receptions > 0 ? fmt(p.receivingYards / p.receptions, 1) : "—",
-            ],
-          }))}
-        />
-      )}
-
-      {tab === "Defense" && (
-        <StatsTable
-          headers={["Tackles", "Sacks", "TFL", "INTs", "PD"]}
-          rows={data.defenders.slice(0, 25).map((p) => ({  // top 25
-            player: p,
-            cells: [
-              fmt(p.totalTackles),
-              fmt(p.sacks),
-              fmt(p.tacklesForLoss),
-              fmt(p.defensiveInterceptions),
-              fmt(p.passesDefended),
-            ],
-          }))}
-        />
-      )}
-
-      <p className="mt-2 text-xs text-gray-600">QB: top 25 · RB: top 50 · WR: top 100 · TE: top 25 · Defense: top 25 · 2025 regular season</p>
+      <p className="mt-2 text-xs text-gray-600">Tap a column to sort · QB 25 · RB 50 · WR 100 · TE 25 · DEF 25 · 2025 season</p>
     </div>
   );
 }
