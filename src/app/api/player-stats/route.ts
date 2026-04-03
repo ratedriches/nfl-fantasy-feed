@@ -122,10 +122,10 @@ function buildPlayer(
 
 export async function GET() {
   try {
-    // pass=50, rush=50, rec=200 (to capture all TEs)
+    // pass=50, rush=100, rec=200 (to capture all TEs)
     const [leadersRes, rushLeadersRes, recLeadersRes] = await Promise.all([
       fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=50`, { next: { revalidate: 3600 } }),
-      fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=50`, { next: { revalidate: 3600 } }),
+      fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=100`, { next: { revalidate: 3600 } }),
       fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=200`, { next: { revalidate: 3600 } }),
     ]);
 
