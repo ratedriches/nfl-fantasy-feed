@@ -235,10 +235,10 @@ export default function PlayerStatsClient() {
       {tab === "QB"      && <SortableTable cols={qbCols}  players={data.passers.slice(0, 50)}          defaultSortKey="passingYards" />}
       {tab === "RB"      && <SortableTable cols={rbCols}  players={data.rushers.slice(0, 100)}         defaultSortKey="rushingYards" />}
       {tab === "WR"      && <SortableTable cols={recCols} players={data.wideReceivers.slice(0, 100)}   defaultSortKey="receivingYards" />}
-      {tab === "TE"      && <SortableTable cols={recCols} players={data.tightEnds.slice(0, 25)}        defaultSortKey="receivingYards" />}
+      {tab === "TE"      && <SortableTable cols={recCols} players={data.tightEnds.slice(0, 50)}        defaultSortKey="receivingYards" />}
       {tab === "Defense" && <SortableTable cols={defCols} players={data.defenders.slice(0, 25)}        defaultSortKey="totalTackles" />}
 
-      <p className="mt-2 text-xs text-gray-600">Tap a column to sort · QB 50 · RB 100 · WR 100 · TE 25 · DEF 25 · 2025 season</p>
+      <p className="mt-2 text-xs text-gray-600">Tap a column to sort · QB 50 · RB 100 · WR 100 · TE 50 · DEF 25 · 2025 season</p>
     </div>
   );
 }
