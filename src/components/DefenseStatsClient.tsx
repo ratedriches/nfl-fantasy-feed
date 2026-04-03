@@ -19,7 +19,7 @@ interface Col {
   decimals?: number;
 }
 
-const LIMITS: Record<DefTab, number> = { DT: 50, DE: 50, LB: 100, CB: 50, S: 50 };
+const LIMITS: Record<DefTab, number> = { DT: 50, DE: 50, LB: 100, CB: 100, S: 100 };
 
 function fmt(val: number, decimals = 0): string {
   if (val === undefined || val === null || isNaN(val)) return "—";
@@ -179,7 +179,7 @@ export default function DefenseStatsClient() {
       <SortableTable players={tabData[tab]} />
 
       <p className="mt-2 text-xs text-gray-600">
-        Tap a column to sort · DT 50 · DE 50 · LB 100 · CB 50 · S 50 · 2025 season
+        Tap a column to sort · DT 50 · DE 50 · LB 100 · CB 100 · S 100 · 2025 season
       </p>
     </div>
   );

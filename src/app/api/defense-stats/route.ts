@@ -121,14 +121,17 @@ export async function GET() {
     // Fetch leader pages + DT/DE rosters in parallel
     const [
       tp1, tp2, tp3,
-      ip1, pp1,
+      ip1, ip2,
+      pp1, pp2,
       dlinemenRoster,
     ] = await Promise.all([
       fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
       fetch(`${BASE}?limit=100&page=2`, OPT).then((r) => r.ok ? r.json() : { categories: [] }),
       fetch(`${BASE}?limit=100&page=3`, OPT).then((r) => r.ok ? r.json() : { categories: [] }),
       fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
+      fetch(`${BASE}?limit=100&page=2`, OPT).then((r) => r.ok ? r.json() : { categories: [] }),
       fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
+      fetch(`${BASE}?limit=100&page=2`, OPT).then((r) => r.ok ? r.json() : { categories: [] }),
       fetchFromRosters(["DT", "DE"]),
     ]);
 
@@ -141,8 +144,8 @@ export async function GET() {
       ...getCategory(tp2, "totalTackles"),
       ...getCategory(tp3, "totalTackles"),
     ];
-    const intLeaders = getCategory(ip1, "defensiveInterceptions");
-    const pbuLeaders = getCategory(pp1, "passesDefended");
+    const intLeaders = [...getCategory(ip1, "defensiveInterceptions"), ...getCategory(ip2, "defensiveInterceptions")];
+    const pbuLeaders = [...getCategory(pp1, "passesDefended"), ...getCategory(pp2, "passesDefended")];
     const allLeaders = [...tackleLeaders, ...intLeaders, ...pbuLeaders];
 
     const seen = new Set<string>();
