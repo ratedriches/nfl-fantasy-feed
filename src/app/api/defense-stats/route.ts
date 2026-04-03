@@ -75,8 +75,13 @@ async function fetchStats(statsRef: string): Promise<Record<string, number>> {
   } catch { return {}; }
 }
 
-const DEF_POSITIONS = new Set(["DT", "DE", "LB", "OLB", "MLB", "ILB", "CB", "FS", "SS", "S", "DB"]);
-const LB_GROUP      = new Set(["LB", "OLB", "MLB", "ILB"]);
+// ESPN position groupings (confirmed from live API):
+// - LB: traditional LBs + edge rushers ESPN classifies as LB (Burns, Parsons, etc.)
+// - DE: traditional 4-3 ends (Garrett, Hutchinson, Hunter, etc.)
+// - CB: corners — appear in defensiveInterceptions / passesDefended
+// - S:  safeties (FS, SS) — appear in defensiveInterceptions / passesDefended
+// - DT: not tracked by ESPN in any leader category — excluded
+const DEF_POSITIONS = new Set(["DE", "LB", "CB", "FS", "SS", "S", "DB"]);
 const S_GROUP       = new Set(["S", "FS", "SS", "DB"]);
 
 export async function GET() {
@@ -84,42 +89,60 @@ export async function GET() {
     const BASE = `${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders`;
     const OPT  = { next: { revalidate: 3600 } } as const;
 
-    // Fetch 6 pages of leaders — each page contains ALL categories including
-    // totalTackles, sacks, and defensiveInterceptions.
-    // This pools enough players across all defensive positions.
-    const pageResponses = await Promise.all([
-      fetch(`${BASE}?limit=100`, OPT),
+    // Fetch targeted category pages:
+    // - totalTackles pages 1-3 → LBs
+    // - sacks pages 1-2       → DEs (and LBs ESPN classifies as such)
+    // - defensiveInterceptions + passesDefended → CBs and Safeties
+    const [
+      tacklesP1, tacklesP2, tacklesP3,
+      sacksP1,   sacksP2,
+      intsP1,    pbuP1,
+    ] = await Promise.all([
+      fetch(`${BASE}?limit=100`,        OPT),
       fetch(`${BASE}?limit=100&page=2`, OPT),
       fetch(`${BASE}?limit=100&page=3`, OPT),
-      fetch(`${BASE}?limit=100&page=4`, OPT),
-      fetch(`${BASE}?limit=100&page=5`, OPT),
-      fetch(`${BASE}?limit=100&page=6`, OPT),
+      fetch(`${BASE}?limit=100`,        OPT),
+      fetch(`${BASE}?limit=100&page=2`, OPT),
+      fetch(`${BASE}?limit=100`,        OPT),
+      fetch(`${BASE}?limit=100`,        OPT),
     ]);
 
-    const pages = await Promise.all(
-      pageResponses.map((r) => r.ok ? r.json() : Promise.resolve({ categories: [] }))
-    );
+    const toJson = (r: Response) => r.ok ? r.json() : Promise.resolve({ categories: [] });
+    const [tp1, tp2, tp3, sp1, sp2, ip1, pp1] = await Promise.all([
+      toJson(tacklesP1), toJson(tacklesP2), toJson(tacklesP3),
+      toJson(sacksP1),   toJson(sacksP2),
+      toJson(intsP1),    toJson(pbuP1),
+    ]);
 
     const getCategory = (data: any, name: string) =>
       data.categories?.find((c: any) => c.name === name)?.leaders ?? [];
 
-    // Pull defensive leader categories from every page and deduplicate
-    const DEF_CATS = ["totalTackles", "sacks", "defensiveInterceptions"];
+    // Pool leaders by category
+    const tackleLeaders = [
+      ...getCategory(tp1, "totalTackles"),
+      ...getCategory(tp2, "totalTackles"),
+      ...getCategory(tp3, "totalTackles"),
+    ];
+    const sackLeaders = [
+      ...getCategory(sp1, "sacks"),
+      ...getCategory(sp2, "sacks"),
+    ];
+    const intLeaders = getCategory(ip1, "defensiveInterceptions");
+    const pbuLeaders = getCategory(pp1, "passesDefended");
+
+    const allLeaders = [...tackleLeaders, ...sackLeaders, ...intLeaders, ...pbuLeaders];
+
+    // Deduplicate by athlete ID
     const seen = new Set<string>();
     const uniqueRefs = new Map<string, { athleteRef: string; statsRef: string }>();
-
-    for (const page of pages) {
-      for (const cat of DEF_CATS) {
-        for (const l of getCategory(page, cat)) {
-          const athleteRef = l.athlete?.$ref;
-          const statsRef   = l.statistics?.$ref;
-          if (!athleteRef || !statsRef) continue;
-          const id = extractId(athleteRef);
-          if (!id || seen.has(id)) continue;
-          seen.add(id);
-          uniqueRefs.set(id, { athleteRef, statsRef });
-        }
-      }
+    for (const l of allLeaders) {
+      const athleteRef = l.athlete?.$ref;
+      const statsRef   = l.statistics?.$ref;
+      if (!athleteRef || !statsRef) continue;
+      const id = extractId(athleteRef);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      uniqueRefs.set(id, { athleteRef, statsRef });
     }
 
     // Batch-fetch athlete profiles + stats in parallel
@@ -129,7 +152,6 @@ export async function GET() {
       Promise.all(ids.map((id) => fetchStats(uniqueRefs.get(id)!.statsRef))),
     ]);
 
-    // Build player objects — only keep defensive positions
     const defPlayers: DefPlayer[] = [];
     ids.forEach((id, i) => {
       const athlete = athletes[i];
@@ -140,22 +162,22 @@ export async function GET() {
         name:             athlete.name,
         team:             athlete.team,
         position:         athlete.position,
-        tackles:          s.totalTackles ?? s.tackles ?? 0,
+        tackles:          s.totalTackles ?? 0,
         tacklesForLoss:   s.tacklesForLoss ?? 0,
-        interceptions:    s.defensiveInterceptions ?? s.interceptions ?? 0,
+        interceptions:    s.defensiveInterceptions ?? 0,
         fumblesForced:    s.fumblesForced ?? 0,
         fumblesRecovered: s.fumblesRecovered ?? 0,
-        passBreakups:     s.passesDefended ?? s.passBreakups ?? 0,
+        passBreakups:     s.passesDefended ?? 0,
         sacks:            s.sacks ?? 0,
       });
     });
 
     const byTackles = (a: DefPlayer, b: DefPlayer) => b.tackles - a.tackles;
+    const bySacks   = (a: DefPlayer, b: DefPlayer) => b.sacks - a.tackles;
 
     return Response.json({
-      DTs: defPlayers.filter((p) => p.position === "DT").sort(byTackles),
-      DEs: defPlayers.filter((p) => p.position === "DE").sort(byTackles),
-      LBs: defPlayers.filter((p) => LB_GROUP.has(p.position)).sort(byTackles),
+      DEs: defPlayers.filter((p) => p.position === "DE").sort(bySacks),
+      LBs: defPlayers.filter((p) => p.position === "LB").sort(byTackles),
       CBs: defPlayers.filter((p) => p.position === "CB").sort(byTackles),
       Ss:  defPlayers.filter((p) => S_GROUP.has(p.position)).sort(byTackles),
     });
