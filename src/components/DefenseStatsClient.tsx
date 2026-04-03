@@ -67,6 +67,7 @@ function SortableTable({ players }: { players: DefPlayer[] }) {
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-gray-800 bg-gray-900">
+            <th className="px-2 py-3 text-center text-gray-500 font-normal w-6">#</th>
             <th
               onClick={() => handleSort("name")}
               className={`sticky left-0 z-10 cursor-pointer bg-gray-900 px-3 py-3 text-left font-semibold transition-colors ${sortKey === "name" ? "text-white" : "text-gray-400"}`}
@@ -94,6 +95,7 @@ function SortableTable({ players }: { players: DefPlayer[] }) {
               key={player.id}
               className={`border-b border-gray-800 ${i % 2 === 0 ? "bg-gray-950" : "bg-gray-900/50"}`}
             >
+              <td className="px-2 py-2.5 text-center text-gray-500">{i + 1}</td>
               <td className="sticky left-0 z-10 bg-inherit px-3 py-2.5 font-semibold text-white">
                 {player.name}
               </td>
