@@ -142,6 +142,7 @@ export default function PlayerStatsClient() {
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [side, setSide] = useState<"offense" | "defense">("offense");
   const [tab, setTab] = useState<Tab>("QB");
 
   useEffect(() => {
@@ -173,7 +174,7 @@ export default function PlayerStatsClient() {
     );
   }
 
-  const tabs: Tab[] = ["QB", "RB", "WR", "TE", "Defense"];
+  const offenseTabs: Tab[] = ["QB", "RB", "WR", "TE"];
 
   const qbCols: Col[] = [
     { label: "Pass Yds", key: "passingYards" },
@@ -218,27 +219,50 @@ export default function PlayerStatsClient() {
 
   return (
     <div>
-      <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-        {tabs.map((t) => (
+      {/* Offense / Defense toggle */}
+      <div className="mb-4 flex rounded-xl border border-gray-800 bg-gray-900 p-1 w-fit">
+        {(["offense", "defense"] as const).map((s) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-              tab === t ? "bg-white text-gray-950" : "border border-gray-700 bg-gray-900 text-gray-400"
+            key={s}
+            onClick={() => setSide(s)}
+            className={`rounded-lg px-4 py-1.5 text-xs font-semibold capitalize transition-colors ${
+              side === s ? "bg-gray-700 text-white" : "text-gray-400"
             }`}
           >
-            {t}
+            {s}
           </button>
         ))}
       </div>
 
-      {tab === "QB"      && <SortableTable cols={qbCols}  players={data.passers.slice(0, 50)}          defaultSortKey="passingYards" />}
-      {tab === "RB"      && <SortableTable cols={rbCols}  players={data.rushers.slice(0, 100)}         defaultSortKey="rushingYards" />}
-      {tab === "WR"      && <SortableTable cols={recCols} players={data.wideReceivers.slice(0, 100)}   defaultSortKey="receivingYards" />}
-      {tab === "TE"      && <SortableTable cols={recCols} players={data.tightEnds.slice(0, 50)}        defaultSortKey="receivingYards" />}
-      {tab === "Defense" && <SortableTable cols={defCols} players={data.defenders.slice(0, 25)}        defaultSortKey="totalTackles" />}
+      {side === "offense" && (
+        <>
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
+            {offenseTabs.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                  tab === t ? "bg-white text-gray-950" : "border border-gray-700 bg-gray-900 text-gray-400"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+          {tab === "QB" && <SortableTable cols={qbCols}  players={data.passers.slice(0, 50)}        defaultSortKey="passingYards" />}
+          {tab === "RB" && <SortableTable cols={rbCols}  players={data.rushers.slice(0, 100)}       defaultSortKey="rushingYards" />}
+          {tab === "WR" && <SortableTable cols={recCols} players={data.wideReceivers.slice(0, 100)} defaultSortKey="receivingYards" />}
+          {tab === "TE" && <SortableTable cols={recCols} players={data.tightEnds.slice(0, 50)}      defaultSortKey="receivingYards" />}
+          <p className="mt-2 text-xs text-gray-600">Tap a column to sort · QB 50 · RB 100 · WR 100 · TE 50 · 2025 season</p>
+        </>
+      )}
 
-      <p className="mt-2 text-xs text-gray-600">Tap a column to sort · QB 50 · RB 100 · WR 100 · TE 50 · DEF 25 · 2025 season</p>
+      {side === "defense" && (
+        <>
+          <SortableTable cols={defCols} players={data.defenders.slice(0, 25)} defaultSortKey="totalTackles" />
+          <p className="mt-2 text-xs text-gray-600">Tap a column to sort · Top 25 · 2025 season</p>
+        </>
+      )}
     </div>
   );
 }
