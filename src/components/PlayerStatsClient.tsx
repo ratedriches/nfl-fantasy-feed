@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { EnrichedPlayer } from "@/app/api/player-stats/route";
+import DefenseStatsClient from "@/components/DefenseStatsClient";
 
 type Tab = "QB" | "RB" | "WR" | "TE" | "Defense";
 
@@ -257,12 +258,7 @@ export default function PlayerStatsClient() {
         </>
       )}
 
-      {side === "defense" && (
-        <>
-          <SortableTable cols={defCols} players={data.defenders.slice(0, 25)} defaultSortKey="totalTackles" />
-          <p className="mt-2 text-xs text-gray-600">Tap a column to sort · Top 25 · 2025 season</p>
-        </>
-      )}
+      {side === "defense" && <DefenseStatsClient />}
     </div>
   );
 }
