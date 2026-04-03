@@ -25,6 +25,11 @@ function fmt(val: number | undefined, decimals = 0): string {
   return decimals > 0 ? val.toFixed(decimals) : Math.round(val).toLocaleString();
 }
 
+function lastName(player: EnrichedPlayer): string {
+  const parts = player.name.trim().split(" ");
+  return parts[parts.length - 1].toLowerCase();
+}
+
 function SortableTable({
   cols,
   players,
@@ -32,26 +37,30 @@ function SortableTable({
 }: {
   cols: Col[];
   players: EnrichedPlayer[];
-  defaultSortKey: keyof EnrichedPlayer;
+  defaultSortKey: keyof EnrichedPlayer | "name";
 }) {
-  const [sortKey, setSortKey] = useState<keyof EnrichedPlayer>(defaultSortKey);
+  const [sortKey, setSortKey] = useState<keyof EnrichedPlayer | "name">(defaultSortKey);
   const [sortDir, setSortDir] = useState<"desc" | "asc">("desc");
 
-  function handleSort(key: keyof EnrichedPlayer) {
+  function handleSort(key: keyof EnrichedPlayer | "name") {
     if (key === sortKey) {
       setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     } else {
       setSortKey(key);
-      setSortDir("desc");
+      setSortDir(key === "name" ? "asc" : "desc");
     }
   }
 
   const colForKey = (key: keyof EnrichedPlayer) => cols.find((c) => c.key === key);
 
   const sorted = [...players].sort((a, b) => {
-    const col = colForKey(sortKey);
-    const av = col?.compute ? col.compute(a) : (a[sortKey] as number) ?? 0;
-    const bv = col?.compute ? col.compute(b) : (b[sortKey] as number) ?? 0;
+    if (sortKey === "name") {
+      const cmp = lastName(a).localeCompare(lastName(b));
+      return sortDir === "asc" ? cmp : -cmp;
+    }
+    const col = colForKey(sortKey as keyof EnrichedPlayer);
+    const av = col?.compute ? col.compute(a) : (a[sortKey as keyof EnrichedPlayer] as number) ?? 0;
+    const bv = col?.compute ? col.compute(b) : (b[sortKey as keyof EnrichedPlayer] as number) ?? 0;
     return sortDir === "desc" ? bv - av : av - bv;
   });
 
@@ -68,7 +77,14 @@ function SortableTable({
         <thead>
           <tr className="border-b border-gray-800 bg-gray-900">
             <th className="px-2 py-3 text-center text-gray-400">#</th>
-            <th className="sticky left-0 bg-gray-900 px-2 py-3 text-left text-gray-400">Player</th>
+            <th
+              onClick={() => handleSort("name")}
+              className={`sticky left-0 cursor-pointer bg-gray-900 px-2 py-3 text-left font-semibold transition-colors ${
+                sortKey === "name" ? "text-white" : "text-gray-400"
+              }`}
+            >
+              Player{sortKey === "name" && <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>}
+            </th>
             {cols.map((col) => (
               <th
                 key={col.key}
@@ -161,11 +177,12 @@ export default function PlayerStatsClient() {
 
   const qbCols: Col[] = [
     { label: "Pass Yds", key: "passingYards" },
-    { label: "TD",       key: "passingTouchdowns" },
+    { label: "Pass TD",  key: "passingTouchdowns" },
     { label: "INT",      key: "interceptions" },
     { label: "Comp%",    key: "completionPct", decimals: 1 },
-    { label: "Rating",   key: "QBRating", decimals: 1 },
     { label: "Rush Yds", key: "rushingYards" },
+    { label: "Rush TD",  key: "rushingTouchdowns" },
+    { label: "Fumbles",  key: "fumbles" },
   ];
 
   const rbCols: Col[] = [
@@ -214,13 +231,13 @@ export default function PlayerStatsClient() {
         ))}
       </div>
 
-      {tab === "QB"      && <SortableTable cols={qbCols}  players={data.passers.slice(0, 25)}          defaultSortKey="passingYards" />}
+      {tab === "QB"      && <SortableTable cols={qbCols}  players={data.passers.slice(0, 50)}          defaultSortKey="passingYards" />}
       {tab === "RB"      && <SortableTable cols={rbCols}  players={data.rushers.slice(0, 50)}          defaultSortKey="rushingYards" />}
       {tab === "WR"      && <SortableTable cols={recCols} players={data.wideReceivers.slice(0, 100)}   defaultSortKey="receivingYards" />}
       {tab === "TE"      && <SortableTable cols={recCols} players={data.tightEnds.slice(0, 25)}        defaultSortKey="receivingYards" />}
       {tab === "Defense" && <SortableTable cols={defCols} players={data.defenders.slice(0, 25)}        defaultSortKey="totalTackles" />}
 
-      <p className="mt-2 text-xs text-gray-600">Tap a column to sort · QB 25 · RB 50 · WR 100 · TE 25 · DEF 25 · 2025 season</p>
+      <p className="mt-2 text-xs text-gray-600">Tap a column to sort · QB 50 · RB 50 · WR 100 · TE 25 · DEF 25 · 2025 season</p>
     </div>
   );
 }

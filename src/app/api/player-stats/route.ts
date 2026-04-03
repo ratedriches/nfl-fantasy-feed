@@ -75,6 +75,7 @@ export interface EnrichedPlayer {
   interceptions: number;
   completionPct: number;
   QBRating: number;
+  fumbles: number;
   // rushing
   rushingYards: number;
   rushingTouchdowns: number;
@@ -103,6 +104,7 @@ function buildPlayer(
     interceptions: stats.interceptions ?? 0,
     completionPct: parseFloat((stats.completionPct ?? 0).toFixed(1)),
     QBRating: parseFloat((stats.QBRating ?? stats.quarterbackRating ?? 0).toFixed(1)),
+    fumbles: stats.fumbles ?? 0,
     rushingYards: stats.rushingYards ?? 0,
     rushingTouchdowns: stats.scoring_rushingTouchdowns ?? stats.rushingTouchdowns ?? 0,
     rushingAttempts: stats.rushingAttempts ?? 0,
@@ -120,9 +122,9 @@ function buildPlayer(
 
 export async function GET() {
   try {
-    // Fetch leader lists — limit=50 for rushing, limit=200 for receiving to capture all TEs
+    // pass=50, rush=50, rec=200 (to capture all TEs)
     const [leadersRes, rushLeadersRes, recLeadersRes] = await Promise.all([
-      fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders`, { next: { revalidate: 3600 } }),
+      fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=50`, { next: { revalidate: 3600 } }),
       fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=50`, { next: { revalidate: 3600 } }),
       fetch(`${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders?limit=200`, { next: { revalidate: 3600 } }),
     ]);
