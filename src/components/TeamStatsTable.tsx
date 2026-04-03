@@ -15,7 +15,7 @@ export default function TeamStatsTable({ teams }: { teams: TeamStats[] }) {
       setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     } else {
       setSortKey(key);
-      setSortDir(key === "avgPointsAgainst" ? "asc" : "desc");
+      setSortDir(key === "team" ? "asc" : key === "avgPointsAgainst" ? "asc" : "desc");
     }
   }
 
@@ -25,7 +25,21 @@ export default function TeamStatsTable({ teams }: { teams: TeamStats[] }) {
     setSortDir(v === "offense" ? "desc" : "asc");
   }
 
+  function winPct(record: string): number {
+    const [w, l, t] = record.split("-").map(Number);
+    const games = (w || 0) + (l || 0) + (t || 0);
+    return games > 0 ? ((w || 0) + (t || 0) * 0.5) / games : 0;
+  }
+
   const sorted = [...teams].sort((a, b) => {
+    if (sortKey === "team") {
+      const cmp = a.abbrev.localeCompare(b.abbrev);
+      return sortDir === "asc" ? cmp : -cmp;
+    }
+    if (sortKey === "record") {
+      const cmp = winPct(a.record) - winPct(b.record);
+      return sortDir === "desc" ? cmp * -1 : cmp;
+    }
     const av = (a as any)[sortKey] ?? 0;
     const bv = (b as any)[sortKey] ?? 0;
     return sortDir === "desc" ? bv - av : av - bv;
@@ -79,10 +93,18 @@ export default function TeamStatsTable({ teams }: { teams: TeamStats[] }) {
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-gray-800 bg-gray-900">
-              <th className="sticky left-0 z-10 bg-gray-900 px-3 py-3 text-left font-semibold text-gray-400">
-                Team
+              <th
+                onClick={() => handleSort("team")}
+                className={`sticky left-0 z-10 bg-gray-900 cursor-pointer px-3 py-3 text-left font-semibold transition-colors ${sortKey === "team" ? "text-white" : "text-gray-400"}`}
+              >
+                Team{sortKey === "team" && <span className="ml-1">{sortDir === "asc" ? "↑" : "↓"}</span>}
               </th>
-              <th className="px-3 py-3 text-center font-semibold text-gray-400">W-L</th>
+              <th
+                onClick={() => handleSort("record")}
+                className={`cursor-pointer px-3 py-3 text-center font-semibold transition-colors ${sortKey === "record" ? "text-white" : "text-gray-400"}`}
+              >
+                W-L{sortKey === "record" && <span className="ml-1">{sortDir === "desc" ? "↓" : "↑"}</span>}
+              </th>
               {cols.map((col) => (
                 <th
                   key={col.key}
