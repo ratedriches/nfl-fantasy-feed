@@ -79,8 +79,9 @@ async function fetchStats(athleteId: string): Promise<Record<string, number>> {
   } catch { return {}; }
 }
 
-// Fetch all DT IDs from every team's roster
-async function fetchDTsFromRosters(): Promise<{ id: string; name: string; team: string }[]> {
+// Fetch players of given positions from all 32 team rosters
+async function fetchFromRosters(positions: string[]): Promise<{ id: string; name: string; team: string; position: string }[]> {
+  const posSet = new Set(positions);
   const rosterResponses = await Promise.all(
     TEAM_IDS.map((id) =>
       fetch(`${SITE}/teams/${id}/roster`, { next: { revalidate: 3600 } })
@@ -89,22 +90,25 @@ async function fetchDTsFromRosters(): Promise<{ id: string; name: string; team: 
     )
   );
 
-  const dts: { id: string; name: string; team: string }[] = [];
+  const players: { id: string; name: string; team: string; position: string }[] = [];
+  const seen = new Set<string>();
   for (let i = 0; i < TEAM_IDS.length; i++) {
     const data = rosterResponses[i];
     if (!data) continue;
     const teamAbbrev = TEAM_ID_TO_ABBREV[String(TEAM_IDS[i])] ?? "";
-    // Roster groups: offense, defense, specialTeam — each has athletes array
     const groups: any[] = data.athletes ?? [];
     for (const group of groups) {
       for (const athlete of group.items ?? []) {
-        if (athlete.position?.abbreviation === "DT") {
-          dts.push({ id: String(athlete.id), name: athlete.displayName ?? "", team: teamAbbrev });
+        const pos = athlete.position?.abbreviation ?? "";
+        const id = String(athlete.id);
+        if (posSet.has(pos) && !seen.has(id)) {
+          seen.add(id);
+          players.push({ id, name: athlete.displayName ?? "", team: teamAbbrev, position: pos });
         }
       }
     }
   }
-  return dts;
+  return players;
 }
 
 const S_GROUP = new Set(["S", "FS", "SS", "DB"]);
@@ -114,41 +118,33 @@ export async function GET() {
     const BASE = `${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders`;
     const OPT  = { next: { revalidate: 3600 } } as const;
 
-    // Fetch leader pages + DT rosters in parallel
+    // Fetch leader pages + DT/DE rosters in parallel
     const [
       tp1, tp2, tp3,
-      sp1, sp2,
       ip1, pp1,
-      dtRoster,
+      dlinemenRoster,
     ] = await Promise.all([
       fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
       fetch(`${BASE}?limit=100&page=2`, OPT).then((r) => r.ok ? r.json() : { categories: [] }),
       fetch(`${BASE}?limit=100&page=3`, OPT).then((r) => r.ok ? r.json() : { categories: [] }),
       fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
-      fetch(`${BASE}?limit=100&page=2`, OPT).then((r) => r.ok ? r.json() : { categories: [] }),
       fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
-      fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
-      fetchDTsFromRosters(),
+      fetchFromRosters(["DT", "DE"]),
     ]);
 
     const getCategory = (data: any, name: string) =>
       data.categories?.find((c: any) => c.name === name)?.leaders ?? [];
 
+    // LB, CB, S — still from leader categories
     const tackleLeaders = [
       ...getCategory(tp1, "totalTackles"),
       ...getCategory(tp2, "totalTackles"),
       ...getCategory(tp3, "totalTackles"),
     ];
-    const sackLeaders = [
-      ...getCategory(sp1, "sacks"),
-      ...getCategory(sp2, "sacks"),
-    ];
     const intLeaders = getCategory(ip1, "defensiveInterceptions");
     const pbuLeaders = getCategory(pp1, "passesDefended");
+    const allLeaders = [...tackleLeaders, ...intLeaders, ...pbuLeaders];
 
-    const allLeaders = [...tackleLeaders, ...sackLeaders, ...intLeaders, ...pbuLeaders];
-
-    // Build unique refs map for leader-based positions (DE, LB, CB, S)
     const seen = new Set<string>();
     const uniqueRefs = new Map<string, { athleteRef: string; statsRef: string }>();
     for (const l of allLeaders) {
@@ -161,18 +157,17 @@ export async function GET() {
       uniqueRefs.set(id, { athleteRef, statsRef });
     }
 
-    // Fetch leader-based athletes + stats
     const leaderIds = Array.from(uniqueRefs.keys());
     const [leaderAthletes, leaderStatMaps] = await Promise.all([
       Promise.all(leaderIds.map((id) => fetchAthlete(uniqueRefs.get(id)!.athleteRef))),
       Promise.all(leaderIds.map((id) => fetchStats(id))),
     ]);
 
-    const DEF_POSITIONS = new Set(["DE", "LB", "CB", "S", "FS", "SS", "DB"]);
+    const LB_CB_S = new Set(["LB", "CB", "S", "FS", "SS", "DB"]);
     const leaderPlayers: DefPlayer[] = [];
     leaderIds.forEach((id, i) => {
       const athlete = leaderAthletes[i];
-      if (!athlete || !DEF_POSITIONS.has(athlete.position)) return;
+      if (!athlete || !LB_CB_S.has(athlete.position)) return;
       const s = leaderStatMaps[i];
       leaderPlayers.push({
         id,
@@ -189,18 +184,17 @@ export async function GET() {
       });
     });
 
-    // Fetch DT stats from roster data (stats endpoint by athlete ID)
-    const dtStats = await Promise.all(dtRoster.map((dt) => fetchStats(dt.id)));
-    const dtPlayers: DefPlayer[] = dtRoster
-      .map((dt, i) => {
-        const s = dtStats[i];
-        // Skip players with no meaningful stats
+    // DT + DE — fetched from all 32 rosters for complete coverage
+    const dlinemenStats = await Promise.all(dlinemenRoster.map((p) => fetchStats(p.id)));
+    const dlinemenPlayers: DefPlayer[] = dlinemenRoster
+      .map((p, i) => {
+        const s = dlinemenStats[i];
         if (!s.totalTackles && !s.sacks && !s.tacklesForLoss) return null;
         return {
-          id:               dt.id,
-          name:             dt.name,
-          team:             dt.team,
-          position:         "DT",
+          id:               p.id,
+          name:             p.name,
+          team:             p.team,
+          position:         p.position,
           tackles:          s.totalTackles ?? 0,
           tacklesForLoss:   s.tacklesForLoss ?? 0,
           interceptions:    s.defensiveInterceptions ?? 0,
@@ -216,8 +210,8 @@ export async function GET() {
     const bySacks   = (a: DefPlayer, b: DefPlayer) => b.sacks - a.sacks;
 
     return Response.json({
-      DTs: dtPlayers.sort(byTackles),
-      DEs: leaderPlayers.filter((p) => p.position === "DE").sort(bySacks),
+      DTs: dlinemenPlayers.filter((p) => p.position === "DT").sort(byTackles),
+      DEs: dlinemenPlayers.filter((p) => p.position === "DE").sort(bySacks),
       LBs: leaderPlayers.filter((p) => p.position === "LB").sort(byTackles),
       CBs: leaderPlayers.filter((p) => p.position === "CB").sort(byTackles),
       Ss:  leaderPlayers.filter((p) => S_GROUP.has(p.position)).sort(byTackles),
