@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import type { DefPlayer } from "@/app/api/defense-stats/route";
 
-type DefTab = "DE" | "LB" | "CB" | "S";
+type DefTab = "DT" | "DE" | "LB" | "CB" | "S";
 
 interface DefData {
+  DTs: DefPlayer[];
   DEs: DefPlayer[];
   LBs: DefPlayer[];
   CBs: DefPlayer[];
@@ -18,7 +19,7 @@ interface Col {
   decimals?: number;
 }
 
-const LIMITS: Record<DefTab, number> = { DE: 50, LB: 100, CB: 50, S: 50 };
+const LIMITS: Record<DefTab, number> = { DT: 50, DE: 50, LB: 100, CB: 50, S: 50 };
 
 function fmt(val: number, decimals = 0): string {
   if (val === undefined || val === null || isNaN(val)) return "—";
@@ -152,6 +153,7 @@ export default function DefenseStatsClient() {
   }
 
   const tabData: Record<DefTab, DefPlayer[]> = {
+    DT: data.DTs.slice(0, LIMITS.DT),
     DE: data.DEs.slice(0, LIMITS.DE),
     LB: data.LBs.slice(0, LIMITS.LB),
     CB: data.CBs.slice(0, LIMITS.CB),
@@ -161,7 +163,7 @@ export default function DefenseStatsClient() {
   return (
     <div>
       <div className="mb-4 flex gap-2 overflow-x-auto pb-1">
-        {(["DE", "LB", "CB", "S"] as DefTab[]).map((t) => (
+        {(["DT", "DE", "LB", "CB", "S"] as DefTab[]).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -177,7 +179,7 @@ export default function DefenseStatsClient() {
       <SortableTable players={tabData[tab]} />
 
       <p className="mt-2 text-xs text-gray-600">
-        Tap a column to sort · DE 50 · LB 100 · CB 50 · S 50 · 2025 season
+        Tap a column to sort · DT 50 · DE 50 · LB 100 · CB 50 · S 50 · 2025 season
       </p>
     </div>
   );

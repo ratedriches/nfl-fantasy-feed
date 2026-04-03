@@ -1,10 +1,17 @@
 // Defensive player stats via ESPN — separate route from /api/player-stats
-// Uses defensive leader categories (tackles, sacks, INTs) instead of offensive ones
-// Completely isolated: no shared state, no shared fetch calls with the offensive route
+// DEs/LBs/CBs/S: pulled from ESPN leader categories (tackles, sacks, INTs, PBU)
+// DTs: pulled from all 32 team rosters (DTs never top leader categories)
+// Completely isolated from the offensive route.
 
 const CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl";
+const SITE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
 const SEASON = 2025;
 const SEASON_TYPE = 2;
+
+const TEAM_IDS = [
+  1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,
+  17,18,19,20,21,22,23,24,25,26,27,28,29,30,33,34,
+];
 
 const TEAM_ID_TO_ABBREV: Record<string, string> = {
   "1":"ATL","2":"BUF","3":"CHI","4":"CIN","5":"CLE","6":"DAL","7":"DEN",
@@ -53,16 +60,13 @@ async function fetchAthlete(ref: string) {
   } catch { return null; }
 }
 
-async function fetchStats(statsRef: string): Promise<Record<string, number>> {
+async function fetchStats(athleteId: string): Promise<Record<string, number>> {
   try {
-    const res = await fetch(statsRef, { next: { revalidate: 3600 } });
+    const url = `${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/athletes/${athleteId}/statistics/0`;
+    const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return {};
     const d = await res.json();
-    const categories: any[] =
-      d.splits?.categories ??
-      d.results?.stats?.categories ??
-      d.categories ??
-      [];
+    const categories: any[] = d.splits?.categories ?? d.categories ?? [];
     const map: Record<string, number> = {};
     for (const cat of categories) {
       for (const s of cat.stats ?? []) {
@@ -75,49 +79,61 @@ async function fetchStats(statsRef: string): Promise<Record<string, number>> {
   } catch { return {}; }
 }
 
-// ESPN position groupings (confirmed from live API):
-// - LB: traditional LBs + edge rushers ESPN classifies as LB (Burns, Parsons, etc.)
-// - DE: traditional 4-3 ends (Garrett, Hutchinson, Hunter, etc.)
-// - CB: corners — appear in defensiveInterceptions / passesDefended
-// - S:  safeties (FS, SS) — appear in defensiveInterceptions / passesDefended
-// - DT: not tracked by ESPN in any leader category — excluded
-const DEF_POSITIONS = new Set(["DE", "LB", "CB", "FS", "SS", "S", "DB"]);
-const S_GROUP       = new Set(["S", "FS", "SS", "DB"]);
+// Fetch all DT IDs from every team's roster
+async function fetchDTsFromRosters(): Promise<{ id: string; name: string; team: string }[]> {
+  const rosterResponses = await Promise.all(
+    TEAM_IDS.map((id) =>
+      fetch(`${SITE}/teams/${id}/roster`, { next: { revalidate: 3600 } })
+        .then((r) => r.ok ? r.json() : null)
+        .catch(() => null)
+    )
+  );
+
+  const dts: { id: string; name: string; team: string }[] = [];
+  for (let i = 0; i < TEAM_IDS.length; i++) {
+    const data = rosterResponses[i];
+    if (!data) continue;
+    const teamAbbrev = TEAM_ID_TO_ABBREV[String(TEAM_IDS[i])] ?? "";
+    // Roster groups: offense, defense, specialTeam — each has athletes array
+    const groups: any[] = data.athletes ?? [];
+    for (const group of groups) {
+      for (const athlete of group.items ?? []) {
+        if (athlete.position?.abbreviation === "DT") {
+          dts.push({ id: String(athlete.id), name: athlete.displayName ?? "", team: teamAbbrev });
+        }
+      }
+    }
+  }
+  return dts;
+}
+
+const S_GROUP = new Set(["S", "FS", "SS", "DB"]);
 
 export async function GET() {
   try {
     const BASE = `${CORE}/seasons/${SEASON}/types/${SEASON_TYPE}/leaders`;
     const OPT  = { next: { revalidate: 3600 } } as const;
 
-    // Fetch targeted category pages:
-    // - totalTackles pages 1-3 → LBs
-    // - sacks pages 1-2       → DEs (and LBs ESPN classifies as such)
-    // - defensiveInterceptions + passesDefended → CBs and Safeties
+    // Fetch leader pages + DT rosters in parallel
     const [
-      tacklesP1, tacklesP2, tacklesP3,
-      sacksP1,   sacksP2,
-      intsP1,    pbuP1,
+      tp1, tp2, tp3,
+      sp1, sp2,
+      ip1, pp1,
+      dtRoster,
     ] = await Promise.all([
-      fetch(`${BASE}?limit=100`,        OPT),
-      fetch(`${BASE}?limit=100&page=2`, OPT),
-      fetch(`${BASE}?limit=100&page=3`, OPT),
-      fetch(`${BASE}?limit=100`,        OPT),
-      fetch(`${BASE}?limit=100&page=2`, OPT),
-      fetch(`${BASE}?limit=100`,        OPT),
-      fetch(`${BASE}?limit=100`,        OPT),
-    ]);
-
-    const toJson = (r: Response) => r.ok ? r.json() : Promise.resolve({ categories: [] });
-    const [tp1, tp2, tp3, sp1, sp2, ip1, pp1] = await Promise.all([
-      toJson(tacklesP1), toJson(tacklesP2), toJson(tacklesP3),
-      toJson(sacksP1),   toJson(sacksP2),
-      toJson(intsP1),    toJson(pbuP1),
+      fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
+      fetch(`${BASE}?limit=100&page=2`, OPT).then((r) => r.ok ? r.json() : { categories: [] }),
+      fetch(`${BASE}?limit=100&page=3`, OPT).then((r) => r.ok ? r.json() : { categories: [] }),
+      fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
+      fetch(`${BASE}?limit=100&page=2`, OPT).then((r) => r.ok ? r.json() : { categories: [] }),
+      fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
+      fetch(`${BASE}?limit=100`,        OPT).then((r) => r.ok ? r.json() : { categories: [] }),
+      fetchDTsFromRosters(),
     ]);
 
     const getCategory = (data: any, name: string) =>
       data.categories?.find((c: any) => c.name === name)?.leaders ?? [];
 
-    // Pool leaders by category
     const tackleLeaders = [
       ...getCategory(tp1, "totalTackles"),
       ...getCategory(tp2, "totalTackles"),
@@ -132,7 +148,7 @@ export async function GET() {
 
     const allLeaders = [...tackleLeaders, ...sackLeaders, ...intLeaders, ...pbuLeaders];
 
-    // Deduplicate by athlete ID
+    // Build unique refs map for leader-based positions (DE, LB, CB, S)
     const seen = new Set<string>();
     const uniqueRefs = new Map<string, { athleteRef: string; statsRef: string }>();
     for (const l of allLeaders) {
@@ -145,19 +161,20 @@ export async function GET() {
       uniqueRefs.set(id, { athleteRef, statsRef });
     }
 
-    // Batch-fetch athlete profiles + stats in parallel
-    const ids = Array.from(uniqueRefs.keys());
-    const [athletes, statMaps] = await Promise.all([
-      Promise.all(ids.map((id) => fetchAthlete(uniqueRefs.get(id)!.athleteRef))),
-      Promise.all(ids.map((id) => fetchStats(uniqueRefs.get(id)!.statsRef))),
+    // Fetch leader-based athletes + stats
+    const leaderIds = Array.from(uniqueRefs.keys());
+    const [leaderAthletes, leaderStatMaps] = await Promise.all([
+      Promise.all(leaderIds.map((id) => fetchAthlete(uniqueRefs.get(id)!.athleteRef))),
+      Promise.all(leaderIds.map((id) => fetchStats(id))),
     ]);
 
-    const defPlayers: DefPlayer[] = [];
-    ids.forEach((id, i) => {
-      const athlete = athletes[i];
+    const DEF_POSITIONS = new Set(["DE", "LB", "CB", "S", "FS", "SS", "DB"]);
+    const leaderPlayers: DefPlayer[] = [];
+    leaderIds.forEach((id, i) => {
+      const athlete = leaderAthletes[i];
       if (!athlete || !DEF_POSITIONS.has(athlete.position)) return;
-      const s = statMaps[i];
-      defPlayers.push({
+      const s = leaderStatMaps[i];
+      leaderPlayers.push({
         id,
         name:             athlete.name,
         team:             athlete.team,
@@ -172,14 +189,38 @@ export async function GET() {
       });
     });
 
+    // Fetch DT stats from roster data (stats endpoint by athlete ID)
+    const dtStats = await Promise.all(dtRoster.map((dt) => fetchStats(dt.id)));
+    const dtPlayers: DefPlayer[] = dtRoster
+      .map((dt, i) => {
+        const s = dtStats[i];
+        // Skip players with no meaningful stats
+        if (!s.totalTackles && !s.sacks && !s.tacklesForLoss) return null;
+        return {
+          id:               dt.id,
+          name:             dt.name,
+          team:             dt.team,
+          position:         "DT",
+          tackles:          s.totalTackles ?? 0,
+          tacklesForLoss:   s.tacklesForLoss ?? 0,
+          interceptions:    s.defensiveInterceptions ?? 0,
+          fumblesForced:    s.fumblesForced ?? 0,
+          fumblesRecovered: s.fumblesRecovered ?? 0,
+          passBreakups:     s.passesDefended ?? 0,
+          sacks:            s.sacks ?? 0,
+        } as DefPlayer;
+      })
+      .filter(Boolean) as DefPlayer[];
+
     const byTackles = (a: DefPlayer, b: DefPlayer) => b.tackles - a.tackles;
-    const bySacks   = (a: DefPlayer, b: DefPlayer) => b.sacks - a.tackles;
+    const bySacks   = (a: DefPlayer, b: DefPlayer) => b.sacks - a.sacks;
 
     return Response.json({
-      DEs: defPlayers.filter((p) => p.position === "DE").sort(bySacks),
-      LBs: defPlayers.filter((p) => p.position === "LB").sort(byTackles),
-      CBs: defPlayers.filter((p) => p.position === "CB").sort(byTackles),
-      Ss:  defPlayers.filter((p) => S_GROUP.has(p.position)).sort(byTackles),
+      DTs: dtPlayers.sort(byTackles),
+      DEs: leaderPlayers.filter((p) => p.position === "DE").sort(bySacks),
+      LBs: leaderPlayers.filter((p) => p.position === "LB").sort(byTackles),
+      CBs: leaderPlayers.filter((p) => p.position === "CB").sort(byTackles),
+      Ss:  leaderPlayers.filter((p) => S_GROUP.has(p.position)).sort(byTackles),
     });
   } catch {
     return Response.json({ error: "Internal error" }, { status: 500 });
