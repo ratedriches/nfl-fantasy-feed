@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { teams } from "@/data/teams";
+import TeamResearchTabs from "@/components/TeamResearchTabs";
 
 export async function generateStaticParams() {
   return teams.map((team) => ({ slug: team.slug }));
@@ -40,14 +41,8 @@ export default async function TeamResearchTeamPage({
         </div>
       </header>
 
-      <main className="px-4 py-8">
-        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-8 text-center">
-          <span className="text-5xl">🔍</span>
-          <h2 className="mt-4 text-lg font-bold text-white">Coming Soon</h2>
-          <p className="mt-2 text-sm text-gray-400">
-            Roster breakdowns, coaching staff info, and more for the {team.name}.
-          </p>
-        </div>
+      <main>
+        <TeamResearchTabs teamColor={team.primaryColor} />
       </main>
     </div>
   );
