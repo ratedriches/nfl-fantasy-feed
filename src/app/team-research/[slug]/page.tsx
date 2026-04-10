@@ -42,7 +42,7 @@ export default async function TeamResearchTeamPage({
       </header>
 
       <main>
-        <TeamResearchTabs teamColor={team.primaryColor} />
+        <TeamResearchTabs teamColor={team.primaryColor} teamName={team.name} />
       </main>
     </div>
   );
