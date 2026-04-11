@@ -35,23 +35,6 @@ function gradeBg(grade: string) {
   return "bg-red-500/10";
 }
 
-function scoreColor(score: string) {
-  const n = parseFloat(score);
-  if (isNaN(n)) return "text-gray-400";
-  if (n >= 8) return "text-green-400";
-  if (n >= 6) return "text-blue-400";
-  if (n >= 4) return "text-yellow-400";
-  return "text-orange-400";
-}
-
-function scoreBg(score: string) {
-  const n = parseFloat(score);
-  if (isNaN(n)) return "bg-gray-700/30";
-  if (n >= 8) return "bg-green-400/10";
-  if (n >= 6) return "bg-blue-400/10";
-  if (n >= 4) return "bg-yellow-400/10";
-  return "bg-orange-400/10";
-}
 
 function RatingBar({
   teamColor,
@@ -168,22 +151,23 @@ export default function TeamResearchTabs({
             {coachingData && (
               <div className="flex flex-col gap-5">
                 <div className="overflow-hidden rounded-xl border border-gray-800">
-                  <div className="grid grid-cols-[1fr_4rem] border-b border-gray-800 bg-gray-900 px-4 py-2">
+                  <div className="grid grid-cols-[1fr_3rem] border-b border-gray-800 bg-gray-900 px-4 py-2">
                     <span className="text-xs font-semibold text-gray-500">Category</span>
-                    <span className="text-center text-xs font-semibold text-gray-500">Score</span>
+                    <span className="text-center text-xs font-semibold text-gray-500">Grade</span>
                   </div>
                   {coachingData.rows.map((row, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_4rem] items-center border-b border-gray-800 last:border-0 bg-gray-900/50 px-4 py-3">
-                      <span className="text-sm font-semibold text-white">{row.category}</span>
-                      <div className="flex justify-center">
-                        {row.score ? (
-                          <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${scoreColor(row.score)} ${scoreBg(row.score)}`}>
-                            {row.score}
+                    <div key={i} className="border-b border-gray-800 last:border-0 bg-gray-900/50 px-4 py-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-sm font-semibold text-white">{row.category}</span>
+                        {row.grade && (
+                          <span className={`shrink-0 rounded-md px-2 py-0.5 text-xs font-bold ${gradeColor(row.grade)} ${gradeBg(row.grade)}`}>
+                            {row.grade}
                           </span>
-                        ) : (
-                          <span className="text-xs text-gray-600">—</span>
                         )}
                       </div>
+                      {row.notes && (
+                        <p className="mt-1.5 text-xs leading-relaxed text-gray-400">{row.notes}</p>
+                      )}
                     </div>
                   ))}
                 </div>
