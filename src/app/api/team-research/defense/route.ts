@@ -1,16 +1,7 @@
+import { parseFirstThreeCols } from "@/lib/sheet-parser";
+
 const SHEET_ID = "1KPfVL7EWIClQqvLGtg-g6CN49O32n60LBhmvxBwklEg";
 const SHEET_NAME = "Defense Players";
-
-function parseFirstThreeCols(line: string): [string, string, string] {
-  const match = line.match(/^"((?:[^"\\]|\\.)*)","((?:[^"\\]|\\.)*)","((?:[^"\\]|\\.)*)"/);
-  if (match) return [match[1], match[2], match[3]];
-  const parts = line.split(",");
-  return [
-    parts[0]?.replace(/^"|"$/g, "") ?? "",
-    parts[1]?.replace(/^"|"$/g, "") ?? "",
-    parts[2]?.replace(/^"|"$/g, "") ?? "",
-  ];
-}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
