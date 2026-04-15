@@ -56,6 +56,8 @@ export async function GET(request: Request) {
     }
 
     if (foundRating) {
+      // Stop if we hit the next team's name row (short col0, no grade/notes columns)
+      if (col0 && !col1 && !col2 && col0.length < 40) break;
       if (col0) summary.push(col0);
       continue;
     }
