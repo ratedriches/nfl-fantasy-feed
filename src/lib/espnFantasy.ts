@@ -41,8 +41,10 @@ export function isLeagueConfigured(): boolean {
 }
 
 function authCookie(): string | null {
-  const s2 = process.env.ESPN_S2;
-  const swid = process.env.ESPN_SWID;
+  // Trim defensively — env vars pasted via a dashboard UI can pick up a
+  // trailing newline, which makes fetch() reject the Cookie header outright.
+  const s2 = process.env.ESPN_S2?.trim();
+  const swid = process.env.ESPN_SWID?.trim();
   if (!s2 || !swid) return null;
   return `espn_s2=${s2}; SWID=${swid}`;
 }
