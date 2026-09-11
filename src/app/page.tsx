@@ -12,6 +12,20 @@ export default function Home() {
       {/* Main nav cards */}
       <main className="flex flex-1 flex-col justify-center gap-4 px-4 py-8">
         <Link
+          href="/league"
+          className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
+        >
+          <span className="text-4xl">🏈</span>
+          <div>
+            <h2 className="text-lg font-bold text-white">Rated R League</h2>
+            <p className="mt-0.5 text-sm text-gray-400">
+              Standings and scores for your ESPN fantasy league
+            </p>
+          </div>
+          <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
+        </Link>
+
+        <Link
           href="/beat-writers"
           className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
         >

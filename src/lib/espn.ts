@@ -186,7 +186,7 @@ function teamIdFromRef(ref: string): string {
   return m ? m[1] : "";
 }
 
-async function fetchAthleteDetails(athleteRef: string): Promise<{
+export async function fetchAthleteDetails(athleteRef: string): Promise<{
   id: string; name: string; shortName: string; position: string;
   teamAbbrev: string; headshotUrl: string;
 }> {
