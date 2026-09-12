@@ -3,6 +3,14 @@
     {
       "path": "/api/league/chat/bots",
       "schedule": "0 13 * * *"
+    },
+    {
+      "path": "/api/league/records/build",
+      "schedule": "0 14 * * 2"
+    },
+    {
+      "path": "/api/cron/beat-writers",
+      "schedule": "0 12 * * *"
     }
   ]
 }

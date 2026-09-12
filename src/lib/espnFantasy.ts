@@ -422,9 +422,15 @@ export interface OwnerHistory {
   divisionTitles: number;
 }
 
-export async function getLeagueHistory(): Promise<{ seasons: SeasonResult[]; owners: OwnerHistory[] }> {
+// previousSeasons only lives on the *live* current-season endpoint response,
+// not the leagueHistory endpoint — so this is the one correct place to get it.
+export async function getPastSeasonYears(): Promise<number[]> {
   const current = await fetchLeague(["mSettings"], 3600);
-  const years: number[] = current?.status?.previousSeasons ?? [];
+  return current?.status?.previousSeasons ?? [];
+}
+
+export async function getLeagueHistory(): Promise<{ seasons: SeasonResult[]; owners: OwnerHistory[] }> {
+  const years = await getPastSeasonYears();
   if (years.length === 0) return { seasons: [], owners: [] };
 
   const seasonDataList = await Promise.all(years.map(fetchSeasonHistory));
