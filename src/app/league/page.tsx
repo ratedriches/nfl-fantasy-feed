@@ -31,8 +31,20 @@ export default function LeaguePage() {
           >
             <span className="text-4xl">📅</span>
             <div>
-              <h2 className="text-lg font-bold text-white">Scores</h2>
+              <h2 className="text-lg font-bold text-white">Live Scores</h2>
               <p className="mt-0.5 text-sm text-gray-400">Weekly matchups and results</p>
+            </div>
+            <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
+          </Link>
+
+          <Link
+            href="/league/transactions"
+            className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
+          >
+            <span className="text-4xl">🔄</span>
+            <div>
+              <h2 className="text-lg font-bold text-white">Recent Transactions</h2>
+              <p className="mt-0.5 text-sm text-gray-400">Waivers, free agents, and trades</p>
             </div>
             <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
           </Link>
@@ -69,18 +81,6 @@ export default function LeaguePage() {
             <div>
               <h2 className="text-lg font-bold text-white">Power Rankings</h2>
               <p className="mt-0.5 text-sm text-gray-400">All-play record + recent form</p>
-            </div>
-            <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
-          </Link>
-
-          <Link
-            href="/league/transactions"
-            className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
-          >
-            <span className="text-4xl">🔄</span>
-            <div>
-              <h2 className="text-lg font-bold text-white">Recent Transactions</h2>
-              <p className="mt-0.5 text-sm text-gray-400">Waivers, free agents, and trades</p>
             </div>
             <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
           </Link>
