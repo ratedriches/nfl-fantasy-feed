@@ -159,13 +159,20 @@ async function computeTeamRecords(years: number[]) {
     for (const m of data.schedule ?? []) {
       const home = m.home;
       const away = m.away;
-      if (home?.teamId && typeof home.totalPoints === "number" && home.totalPoints > 0) {
-        const t = teamById.get(home.teamId);
-        if (t) weeklyScores.push({ year, week: m.matchupPeriodId, teamName: t.name, ownerName: t.ownerName, score: home.totalPoints });
-      }
-      if (away?.teamId && typeof away.totalPoints === "number" && away.totalPoints > 0) {
-        const t = teamById.get(away.teamId);
-        if (t) weeklyScores.push({ year, week: m.matchupPeriodId, teamName: t.name, ownerName: t.ownerName, score: away.totalPoints });
+
+      // Playoff rounds can span multiple actual weeks (e.g. a 2-week
+      // championship round) — totalPoints is the SUM across those weeks, not
+      // a single week's score. pointsByScoringPeriod breaks it down by the
+      // real week number, which is what "single week score" actually means.
+      for (const side of [home, away]) {
+        if (!side?.teamId) continue;
+        const t = teamById.get(side.teamId);
+        if (!t) continue;
+        for (const [weekStr, score] of Object.entries(side.pointsByScoringPeriod ?? {})) {
+          if (typeof score === "number" && score > 0) {
+            weeklyScores.push({ year, week: Number(weekStr), teamName: t.name, ownerName: t.ownerName, score });
+          }
+        }
       }
       if (
         home?.teamId &&
