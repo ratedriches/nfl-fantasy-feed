@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { teams } from "@/data/teams";
-import { mockTweetsByTeam } from "@/data/mockTweets";
+import { getTweetsForTeam } from "@/lib/twitter";
 import TeamFeed from "@/components/TeamFeed";
 
-export async function generateStaticParams() {
-  return teams.map((team) => ({ slug: team.slug }));
-}
+// Tweets are fetched (or served from a short-lived cache) per request, so
+// this route can't be statically generated at build time.
+export const dynamic = "force-dynamic";
 
 export default async function TeamPage({
   params,
@@ -18,7 +18,7 @@ export default async function TeamPage({
   const team = teams.find((t) => t.slug === slug);
   if (!team) notFound();
 
-  const tweets = (mockTweetsByTeam[slug] ?? []).sort(
+  const tweets = (await getTweetsForTeam(team)).sort(
     (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
   );
 

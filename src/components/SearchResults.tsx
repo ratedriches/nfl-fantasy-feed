@@ -1,8 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { teams } from "@/data/teams";
-import { mockTweetsByTeam, type Tweet } from "@/data/mockTweets";
+import type { Tweet } from "@/data/mockTweets";
 
 function highlight(text: string, query: string) {
   if (!query) return <>{text}</>;
@@ -41,22 +42,28 @@ type Result = Tweet & { teamSlug: string };
 
 export default function SearchResults({ query }: { query: string }) {
   const trimmed = query.trim();
+  const [results, setResults] = useState<Result[]>([]);
+
+  useEffect(() => {
+    if (!trimmed) {
+      setResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => {
+      fetch(`/api/tweets/search?q=${encodeURIComponent(trimmed)}`, { signal: controller.signal })
+        .then((res) => res.json())
+        .then((data: { results: Result[] }) => setResults(data.results))
+        .catch(() => {});
+    }, 250); // debounce so we're not hitting the route on every keystroke
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [trimmed]);
 
   if (!trimmed) return null;
-
-  const results: Result[] = [];
-
-  for (const [slug, tweets] of Object.entries(mockTweetsByTeam)) {
-    for (const tweet of tweets) {
-      if (tweet.content.toLowerCase().includes(trimmed.toLowerCase())) {
-        results.push({ ...tweet, teamSlug: slug });
-      }
-    }
-  }
-
-  results.sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
 
   if (results.length === 0) {
     return (
