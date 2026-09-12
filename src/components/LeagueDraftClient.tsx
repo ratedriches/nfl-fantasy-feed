@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { DraftPick, DraftSummary } from "@/lib/espnFantasy";
+import type { DraftAnalysis } from "@/lib/draftAnalysis";
 
 function summarizeLineup(startingLineup: string[]): string {
   const counts = new Map<string, number>();
@@ -19,6 +20,9 @@ export default function LeagueDraftClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
+  const [analysis, setAnalysis] = useState<DraftAnalysis | null>(null);
+  const [analysisConfigured, setAnalysisConfigured] = useState(true);
+
   useEffect(() => {
     fetch("/api/league/draft")
       .then((r) => r.json())
@@ -30,18 +34,20 @@ export default function LeagueDraftClient() {
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
+
+    fetch("/api/league/draft/analysis")
+      .then((r) => r.json())
+      .then((data) => {
+        setAnalysisConfigured(Boolean(data.configured));
+        setAnalysis(data.analysis ?? null);
+      })
+      .catch(() => {});
   }, []);
 
-  const rounds = useMemo(() => {
-    const map = new Map<number, DraftPick[]>();
-    for (const p of picks) {
-      if (!map.has(p.round)) map.set(p.round, []);
-      map.get(p.round)!.push(p);
-    }
-    return Array.from(map.entries())
-      .sort((a, b) => a[0] - b[0])
-      .map(([round, rp]) => ({ round, picks: rp.sort((a, b) => a.roundPick - b.roundPick) }));
-  }, [picks]);
+  const round1Picks = useMemo(
+    () => picks.filter((p) => p.round === 1).sort((a, b) => a.roundPick - b.roundPick),
+    [picks]
+  );
 
   if (loading) {
     return (
@@ -76,7 +82,7 @@ export default function LeagueDraftClient() {
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-8">
       {summary && (
         <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
           <h1 className="text-lg font-bold text-white">{summary.leagueName}</h1>
@@ -102,45 +108,85 @@ export default function LeagueDraftClient() {
         </div>
       )}
 
-      {rounds.map(({ round, picks: roundPicks }) => (
-        <div key={round}>
-          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Round {round}</h2>
-          <div className="flex flex-col gap-1.5">
-            {roundPicks.map((p) => (
-              <div
-                key={p.overallPickNumber}
-                className="flex items-center gap-3 rounded-xl border border-gray-800 bg-gray-900 px-3 py-2"
-              >
-                <span className="w-8 shrink-0 text-center text-xs font-semibold text-gray-500">
-                  {p.overallPickNumber}
-                </span>
-                {p.headshotUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={p.headshotUrl} alt="" className="h-8 w-8 shrink-0 rounded-full bg-gray-800 object-cover" />
-                ) : (
-                  <div className="h-8 w-8 shrink-0 rounded-full bg-gray-800" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-semibold text-white">
-                    {p.playerName}
-                    {p.playerPosition && (
-                      <span className="ml-1.5 text-xs font-normal text-gray-500">
-                        {p.playerPosition}
-                        {p.playerProTeam ? ` · ${p.playerProTeam}` : ""}
-                      </span>
-                    )}
-                  </div>
-                  <div className="truncate text-xs text-gray-400">
-                    {p.teamName}
-                    {p.isKeeper && <span className="ml-1.5 text-amber-500">Keeper</span>}
-                    {p.isAutoDraft && <span className="ml-1.5 text-gray-600">Auto</span>}
-                  </div>
+      <div>
+        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Round 1</h2>
+        {analysis?.round1Summary && (
+          <p className="mb-3 text-sm text-gray-300">{analysis.round1Summary}</p>
+        )}
+        <div className="flex flex-col gap-1.5">
+          {round1Picks.map((p) => (
+            <div
+              key={p.overallPickNumber}
+              className="flex items-center gap-3 rounded-xl border border-gray-800 bg-gray-900 px-3 py-2"
+            >
+              <span className="w-8 shrink-0 text-center text-xs font-semibold text-gray-500">
+                {p.overallPickNumber}
+              </span>
+              {p.headshotUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={p.headshotUrl} alt="" className="h-8 w-8 shrink-0 rounded-full bg-gray-800 object-cover" />
+              ) : (
+                <div className="h-8 w-8 shrink-0 rounded-full bg-gray-800" />
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold text-white">
+                  {p.playerName}
+                  {p.playerPosition && (
+                    <span className="ml-1.5 text-xs font-normal text-gray-500">
+                      {p.playerPosition}
+                      {p.playerProTeam ? ` · ${p.playerProTeam}` : ""}
+                    </span>
+                  )}
                 </div>
+                <div className="truncate text-xs text-gray-400">
+                  {p.teamName}
+                  {p.isKeeper && <span className="ml-1.5 text-amber-500">Keeper</span>}
+                  {p.isAutoDraft && <span className="ml-1.5 text-gray-600">Auto</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">Team-by-Team Breakdown</h2>
+        {!analysisConfigured && (
+          <div className="rounded-xl border border-gray-800 bg-gray-900 p-6 text-center">
+            <p className="text-gray-300">Draft grades aren&apos;t configured yet.</p>
+            <p className="mt-2 text-xs text-gray-500">
+              Needs <code className="rounded bg-gray-800 px-1 py-0.5">ANTHROPIC_API_KEY</code>,{" "}
+              <code className="rounded bg-gray-800 px-1 py-0.5">KV_REST_API_URL</code>, and{" "}
+              <code className="rounded bg-gray-800 px-1 py-0.5">KV_REST_API_TOKEN</code>.
+            </p>
+          </div>
+        )}
+        {analysisConfigured && !analysis && (
+          <div className="py-6 text-center">
+            <p className="text-gray-400">Draft grades haven&apos;t been generated yet.</p>
+          </div>
+        )}
+        {analysis && (
+          <div className="flex flex-col gap-4">
+            {analysis.teams.map((t) => (
+              <div key={t.teamId} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="text-sm font-bold text-white">
+                    {t.teamName} <span className="font-normal text-gray-500">({t.ownerName})</span>
+                  </h3>
+                  <span className="shrink-0 text-xs text-gray-500">Slot {t.slot}</span>
+                </div>
+                <p className="mt-2 text-sm leading-relaxed text-gray-200">{t.bestPart}</p>
+                <p className="mt-2 text-sm leading-relaxed text-gray-400">{t.worstPart}</p>
+                <p className="mt-3 border-t border-gray-800 pt-2 text-sm">
+                  <span className="font-bold text-emerald-400">Grade: {t.grade}</span>{" "}
+                  <span className="text-gray-400">{t.gradeNote}</span>
+                </p>
               </div>
             ))}
           </div>
-        </div>
-      ))}
+        )}
+      </div>
     </div>
   );
 }

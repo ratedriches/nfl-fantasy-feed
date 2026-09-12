@@ -1,4 +1,4 @@
-import { fetchAthleteDetails } from "@/lib/espn";
+import { fetchAthleteDetails, TEAM_ID_TO_ABBREV } from "@/lib/espn";
 
 const SEASON = Number(process.env.ESPN_SEASON ?? "2025");
 const LEAGUE_ID = process.env.ESPN_LEAGUE_ID ?? "";
@@ -218,33 +218,62 @@ export async function getDraftRecap(): Promise<{
   completeDate: number | null;
   summary: DraftSummary | null;
 }> {
-  const data = await fetchLeague(["mDraftDetail", "mTeam", "mSettings"], 3600);
+  const data = await fetchLeague(["mDraftDetail", "mTeam", "mSettings", "mRoster"], 3600);
   if (!data?.draftDetail?.picks) return { picks: [], drafted: false, completeDate: null, summary: null };
 
   const teamNameById = new Map<number, string>();
   for (const t of data.teams ?? []) teamNameById.set(t.id, teamName(t));
 
+  // Draft picks only carry a playerId, no name — resolving it requires a
+  // second lookup. Team defenses use special negative IDs that the generic
+  // CORE athletes API 404s on, but current team rosters embed every
+  // player's full details directly (including defenses), so check there
+  // first and only fall back to the CORE API for players since dropped.
+  const PLAYER_POSITION_MAP: Record<number, string> = {
+    1: "QB", 2: "RB", 3: "WR", 4: "TE", 5: "K", 7: "P",
+    9: "DT", 10: "DE", 11: "LB", 12: "CB", 13: "S", 14: "DB", 16: "D/ST",
+  };
+  const rosterPlayerById = new Map<number, { name: string; position: string; teamAbbrev: string }>();
+  for (const t of data.teams ?? []) {
+    for (const entry of t.roster?.entries ?? []) {
+      const player = entry.playerPoolEntry?.player;
+      if (!player) continue;
+      rosterPlayerById.set(entry.playerId, {
+        name: player.fullName ?? "",
+        position: PLAYER_POSITION_MAP[player.defaultPositionId] ?? "",
+        teamAbbrev: TEAM_ID_TO_ABBREV[String(player.proTeamId)] ?? "",
+      });
+    }
+  }
+
   const rawPicks: any[] = data.draftDetail.picks;
   const athleteDetails = await Promise.all(
     rawPicks.map((p) =>
-      fetchAthleteDetails(`https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/athletes/${p.playerId}`)
+      rosterPlayerById.has(p.playerId)
+        ? Promise.resolve(null)
+        : fetchAthleteDetails(`https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/athletes/${p.playerId}`)
     )
   );
 
   const picks: DraftPick[] = rawPicks
-    .map((p, i) => ({
-      overallPickNumber: p.overallPickNumber,
-      round: p.roundId,
-      roundPick: p.roundPickNumber,
-      teamId: p.teamId,
-      teamName: teamNameById.get(p.teamId) ?? `Team ${p.teamId}`,
-      playerName: athleteDetails[i].name || "Unknown Player",
-      playerPosition: athleteDetails[i].position,
-      playerProTeam: athleteDetails[i].teamAbbrev,
-      headshotUrl: athleteDetails[i].headshotUrl,
-      isKeeper: Boolean(p.keeper),
-      isAutoDraft: p.autoDraftTypeId !== 0,
-    }))
+    .map((p, i) => {
+      const fromRoster = rosterPlayerById.get(p.playerId);
+      const fallback = athleteDetails[i];
+      return {
+        overallPickNumber: p.overallPickNumber,
+        round: p.roundId,
+        roundPick: p.roundPickNumber,
+        teamId: p.teamId,
+        teamName: teamNameById.get(p.teamId) ?? `Team ${p.teamId}`,
+        playerName: fromRoster?.name || fallback?.name || "Unknown Player",
+        playerPosition: fromRoster?.position || fallback?.position || "",
+        playerProTeam: fromRoster?.teamAbbrev || fallback?.teamAbbrev || "",
+        headshotUrl:
+          fallback?.headshotUrl || (p.playerId > 0 ? `https://a.espncdn.com/i/headshots/nfl/players/full/${p.playerId}.png` : ""),
+        isKeeper: Boolean(p.keeper),
+        isAutoDraft: p.autoDraftTypeId !== 0,
+      };
+    })
     .sort((a, b) => a.overallPickNumber - b.overallPickNumber);
 
   // ─── Header summary ───────────────────────────────────────────────────────
