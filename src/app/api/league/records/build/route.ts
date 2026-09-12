@@ -1,4 +1,5 @@
 import { buildAndStoreRecordBook } from "@/lib/recordBook";
+import { generateAndStoreWeeklyRecap } from "@/lib/weeklyRecap";
 
 // This does ~13 team-level calls plus one call per season+week for individual
 // player scores (~230 calls total across 13 seasons) — needs more than the
@@ -6,7 +7,9 @@ import { buildAndStoreRecordBook } from "@/lib/recordBook";
 export const maxDuration = 60;
 
 // Triggered weekly by Vercel Cron (see vercel.json), same CRON_SECRET pattern
-// as the chat bots endpoint.
+// as the chat bots endpoint. Also generates the weekly recap here rather than
+// a separate cron — both are weekly maintenance tasks, and Vercel's free tier
+// caps how many cron jobs a project can have.
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET;
   if (secret) {
@@ -16,6 +19,10 @@ export async function GET(req: Request) {
     }
   }
 
-  const result = await buildAndStoreRecordBook();
-  return Response.json(result);
+  const [recordBookResult, recapResult] = await Promise.all([
+    buildAndStoreRecordBook(),
+    generateAndStoreWeeklyRecap(),
+  ]);
+
+  return Response.json({ recordBook: recordBookResult, recap: recapResult });
 }

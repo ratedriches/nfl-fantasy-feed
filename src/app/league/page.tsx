@@ -110,6 +110,18 @@ export default function LeaguePage() {
           </Link>
 
           <Link
+            href="/league/recaps"
+            className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
+          >
+            <span className="text-4xl">📰</span>
+            <div>
+              <h2 className="text-lg font-bold text-white">Weekly Recaps</h2>
+              <p className="mt-0.5 text-sm text-gray-400">How each week&apos;s matchups unfolded</p>
+            </div>
+            <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
+          </Link>
+
+          <Link
             href="/league/chat"
             className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
           >
