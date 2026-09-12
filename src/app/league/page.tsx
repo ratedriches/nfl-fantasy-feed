@@ -14,13 +14,13 @@ export default function LeaguePage() {
       <main className="px-4 py-6">
         <div className="flex flex-col gap-4">
           <Link
-            href="/league/standings"
+            href="/league/chat"
             className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
           >
-            <span className="text-4xl">🏆</span>
+            <span className="text-4xl">💬</span>
             <div>
-              <h2 className="text-lg font-bold text-white">Standings</h2>
-              <p className="mt-0.5 text-sm text-gray-400">Current league rankings and records</p>
+              <h2 className="text-lg font-bold text-white">Chat Room</h2>
+              <p className="mt-0.5 text-sm text-gray-400">Message board, with AI bots chiming in</p>
             </div>
             <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
           </Link>
@@ -38,18 +38,6 @@ export default function LeaguePage() {
           </Link>
 
           <Link
-            href="/league/chat"
-            className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
-          >
-            <span className="text-4xl">💬</span>
-            <div>
-              <h2 className="text-lg font-bold text-white">Chat Room</h2>
-              <p className="mt-0.5 text-sm text-gray-400">Message board, with AI bots chiming in</p>
-            </div>
-            <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
-          </Link>
-
-          <Link
             href="/league/recaps"
             className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
           >
@@ -57,6 +45,18 @@ export default function LeaguePage() {
             <div>
               <h2 className="text-lg font-bold text-white">Weekly Recap</h2>
               <p className="mt-0.5 text-sm text-gray-400">How each week&apos;s matchups unfolded</p>
+            </div>
+            <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
+          </Link>
+
+          <Link
+            href="/league/standings"
+            className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
+          >
+            <span className="text-4xl">🏆</span>
+            <div>
+              <h2 className="text-lg font-bold text-white">Standings</h2>
+              <p className="mt-0.5 text-sm text-gray-400">Current league rankings and records</p>
             </div>
             <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
           </Link>
