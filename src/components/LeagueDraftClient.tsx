@@ -1,10 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { DraftPick } from "@/lib/espnFantasy";
+import type { DraftPick, DraftSummary } from "@/lib/espnFantasy";
+
+function summarizeLineup(startingLineup: string[]): string {
+  const counts = new Map<string, number>();
+  for (const pos of startingLineup) counts.set(pos, (counts.get(pos) ?? 0) + 1);
+  return Array.from(counts.entries())
+    .map(([pos, count]) => (count > 1 ? `${count} ${pos}` : pos))
+    .join(", ");
+}
 
 export default function LeagueDraftClient() {
   const [picks, setPicks] = useState<DraftPick[]>([]);
+  const [summary, setSummary] = useState<DraftSummary | null>(null);
   const [drafted, setDrafted] = useState(false);
   const [configured, setConfigured] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -17,6 +26,7 @@ export default function LeagueDraftClient() {
         setConfigured(Boolean(data.configured));
         setDrafted(Boolean(data.drafted));
         setPicks(Array.isArray(data.picks) ? data.picks : []);
+        setSummary(data.summary ?? null);
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
@@ -67,6 +77,31 @@ export default function LeagueDraftClient() {
 
   return (
     <div className="flex flex-col gap-5">
+      {summary && (
+        <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+          <h1 className="text-lg font-bold text-white">{summary.leagueName}</h1>
+          <p className="text-sm font-semibold text-gray-300">{summary.year} Draft Recap</p>
+          <p className="mt-2 text-xs text-gray-400">
+            {summary.numTeams} teams · {summary.numRounds} rounds · {summary.numPicks} picks
+            {summary.numKeepers > 0 ? ` · ${summary.numKeepers} keepers` : ""}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            {summarizeLineup(summary.startingLineup)} · Full PPR · {summary.waiverType}
+          </p>
+
+          {summary.highlights.length > 0 && (
+            <ul className="mt-3 flex flex-col gap-1 border-t border-gray-800 pt-3 text-xs text-gray-300">
+              {summary.highlights.map((h, i) => (
+                <li key={i} className="flex gap-1.5">
+                  <span className="text-gray-600">•</span>
+                  <span>{h}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
       {rounds.map(({ round, picks: roundPicks }) => (
         <div key={round}>
           <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Round {round}</h2>

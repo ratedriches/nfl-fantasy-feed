@@ -170,9 +170,56 @@ export interface DraftPick {
   isAutoDraft: boolean;
 }
 
-export async function getDraftRecap(): Promise<{ picks: DraftPick[]; drafted: boolean; completeDate: number | null }> {
-  const data = await fetchLeague(["mDraftDetail", "mTeam"], 3600);
-  if (!data?.draftDetail?.picks) return { picks: [], drafted: false, completeDate: null };
+// ESPN's roster-SLOT id table (distinct from a player's own defaultPositionId
+// table used elsewhere) — the standard mapping used across the community
+// (e.g. the espn_api library), for turning lineupSlotCounts into a readable
+// starting lineup.
+const LINEUP_SLOT_MAP: Record<number, string> = {
+  0: "QB",
+  1: "TQB",
+  2: "RB",
+  3: "RB/WR",
+  4: "WR",
+  5: "WR/TE",
+  6: "TE",
+  7: "Superflex",
+  8: "DT",
+  9: "DE",
+  10: "LB",
+  11: "DL",
+  12: "CB",
+  13: "S",
+  14: "DB",
+  15: "DP",
+  16: "D/ST",
+  17: "K",
+  18: "P",
+  19: "HC",
+  23: "FLEX",
+  24: "EDR",
+};
+const BENCH_IR_SLOTS = new Set([20, 21]);
+
+export interface DraftSummary {
+  leagueName: string;
+  year: number;
+  numTeams: number;
+  numRounds: number;
+  numPicks: number;
+  numKeepers: number;
+  startingLineup: string[];
+  waiverType: string;
+  highlights: string[];
+}
+
+export async function getDraftRecap(): Promise<{
+  picks: DraftPick[];
+  drafted: boolean;
+  completeDate: number | null;
+  summary: DraftSummary | null;
+}> {
+  const data = await fetchLeague(["mDraftDetail", "mTeam", "mSettings"], 3600);
+  if (!data?.draftDetail?.picks) return { picks: [], drafted: false, completeDate: null, summary: null };
 
   const teamNameById = new Map<number, string>();
   for (const t of data.teams ?? []) teamNameById.set(t.id, teamName(t));
@@ -200,10 +247,89 @@ export async function getDraftRecap(): Promise<{ picks: DraftPick[]; drafted: bo
     }))
     .sort((a, b) => a.overallPickNumber - b.overallPickNumber);
 
+  // ─── Header summary ───────────────────────────────────────────────────────
+
+  const numRounds = picks.length > 0 ? Math.max(...picks.map((p) => p.round)) : 0;
+  const numKeepers = picks.filter((p) => p.isKeeper).length;
+
+  const slotCounts: Record<string, number> = data.settings?.rosterSettings?.lineupSlotCounts ?? {};
+  const startingLineup: string[] = [];
+  for (const [slotId, count] of Object.entries(slotCounts)) {
+    const id = Number(slotId);
+    if (BENCH_IR_SLOTS.has(id) || count <= 0) continue;
+    const label = LINEUP_SLOT_MAP[id];
+    if (!label) continue;
+    for (let i = 0; i < count; i++) startingLineup.push(label);
+  }
+
+  const waiverType = data.settings?.acquisitionSettings?.isUsingAcquisitionBudget
+    ? `$${data.settings.acquisitionSettings.acquisitionBudget} FAAB`
+    : "Traditional waivers";
+
+  // ─── Auto-generated highlights ────────────────────────────────────────────
+
+  const highlights: string[] = [];
+
+  if (picks.length > 0) {
+    const first = picks[0];
+    highlights.push(`${first.playerName} (${first.playerPosition}) went #1 overall to ${first.teamName}.`);
+
+    const last = picks[picks.length - 1];
+    highlights.push(`Mr. Irrelevant: ${last.playerName} (${last.playerPosition}), the last pick of the draft, to ${last.teamName}.`);
+  }
+
+  // Longest run of the same position taken back-to-back.
+  let longestRun = { position: "", length: 0, startPick: 0 };
+  let currentRun = { position: "", length: 0, startPick: 0 };
+  for (const p of picks) {
+    if (p.playerPosition === currentRun.position) {
+      currentRun.length++;
+    } else {
+      currentRun = { position: p.playerPosition, length: 1, startPick: p.overallPickNumber };
+    }
+    if (currentRun.length > longestRun.length) longestRun = { ...currentRun };
+  }
+  if (longestRun.length >= 3) {
+    highlights.push(
+      `${longestRun.length} ${longestRun.position}s were taken in a row starting at pick ${longestRun.startPick}.`
+    );
+  }
+
+  // Most popular position in round 1.
+  const round1 = picks.filter((p) => p.round === 1);
+  if (round1.length > 0) {
+    const counts = new Map<string, number>();
+    for (const p of round1) counts.set(p.playerPosition, (counts.get(p.playerPosition) ?? 0) + 1);
+    const [topPos, topCount] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (topCount >= 3) {
+      highlights.push(`${topPos} was the most popular position in round 1, with ${topCount} taken.`);
+    }
+  }
+
+  if (numKeepers > 0) {
+    const byTeam = new Map<string, number>();
+    for (const p of picks.filter((p) => p.isKeeper)) byTeam.set(p.teamName, (byTeam.get(p.teamName) ?? 0) + 1);
+    const [topTeam, topKeeperCount] = [...byTeam.entries()].sort((a, b) => b[1] - a[1])[0];
+    highlights.push(`${topTeam} kept the most players, with ${topKeeperCount} keeper${topKeeperCount === 1 ? "" : "s"}.`);
+  }
+
+  const summary: DraftSummary = {
+    leagueName: "Rated R League",
+    year: Number(process.env.ESPN_SEASON ?? new Date().getFullYear()),
+    numTeams: data.teams?.length ?? 0,
+    numRounds,
+    numPicks: picks.length,
+    numKeepers,
+    startingLineup,
+    waiverType,
+    highlights,
+  };
+
   return {
     picks,
     drafted: Boolean(data.draftDetail.drafted),
     completeDate: data.draftDetail.completeDate ?? null,
+    summary,
   };
 }
 
