@@ -5,8 +5,8 @@ import { mockTweetsByTeam, type Tweet } from "@/data/mockTweets";
 // twitterapi.io — a low-cost third-party X/Twitter API (no official dev
 // account needed, ~$0.15/1k tweets). See TWITTER_API_KEY in .env.local.
 const API_BASE = "https://api.twitterapi.io";
-const TWEETS_PER_WRITER = 5;
-const TWEETS_PER_TEAM = 15;
+const TWEETS_PER_WRITER = 15;
+const TWEETS_PER_TEAM = 30;
 const CACHE_TTL_SECONDS = 180; // re-fetch at most every 3 minutes per team
 
 function isConfigured(): boolean {
