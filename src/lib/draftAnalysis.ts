@@ -112,7 +112,7 @@ export async function buildAndStoreDraftAnalysis(): Promise<{ ok: boolean; reaso
     const pickLines = sorted
       .map(
         (p) =>
-          `R${p.round}.${p.overallPickNumber} ${p.playerName} (${p.playerPosition}${p.playerProTeam ? `, ${p.playerProTeam}` : ""})${p.isKeeper ? " [KEEPER]" : ""}`
+          `${p.round}.${p.roundPick} ${p.playerName} (${p.playerPosition}${p.playerProTeam ? `, ${p.playerProTeam}` : ""})${p.isKeeper ? " [KEEPER]" : ""}`
       )
       .join("\n");
     return { teamId, teamName: owner?.teamName ?? `Team ${teamId}`, ownerName: owner?.ownerName ?? "Unknown Owner", slot, pickLines };
@@ -128,7 +128,7 @@ export async function buildAndStoreDraftAnalysis(): Promise<{ ok: boolean; reaso
   const stream = client.messages.stream({
     model: "claude-opus-5",
     max_tokens: 16000,
-    system: `You are a sharp, opinionated fantasy football draft analyst grading every team in a real league's just-finished draft. Use ONLY the real players, rounds, and picks given below — never invent a player, stat, or ADP figure. Reference specific picks using "Round.OverallPickNumber" notation (e.g. "3.36" means round 3, overall pick 36). League format: ${leagueFormat}
+    system: `You are a sharp, opinionated fantasy football draft analyst grading every team in a real league's just-finished draft. Use ONLY the real players, rounds, and picks given below — never invent a player, stat, or ADP figure. Each pick below is already labeled "Round.PickInRound" (e.g. "3.9" means round 3, the 9th pick of that round — NOT the overall pick number). When you reference a pick, copy that exact "Round.PickInRound" label verbatim from the data — do not compute or substitute the overall pick number. League format: ${leagueFormat}
 
 For EACH team, write:
 - "bestPart": 3-5 sentences on the strongest part of their draft/roster, citing specific real picks by name and pick number.
