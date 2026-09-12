@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { Division, LeagueTeam } from "@/lib/espnFantasy";
 
 export default function LeagueStandingsClient() {
@@ -98,13 +99,13 @@ function StandingsTable({ teams }: { teams: LeagueTeam[] }) {
             >
               <td className="px-3 py-2.5 text-gray-500">{i + 1}</td>
               <td className="px-3 py-2.5">
-                <div className="flex items-center gap-2">
+                <Link href={`/league/team/${team.id}`} className="flex items-center gap-2">
                   {team.logo && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={team.logo} alt="" className="h-5 w-5 rounded-full object-cover" />
                   )}
-                  <span className="font-semibold text-white">{team.name}</span>
-                </div>
+                  <span className="font-semibold text-white hover:underline">{team.name}</span>
+                </Link>
               </td>
               <td className="px-3 py-2.5 text-center text-gray-300">
                 {team.wins}-{team.losses}

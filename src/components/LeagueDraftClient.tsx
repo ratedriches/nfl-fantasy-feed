@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import type { DraftPick, DraftSummary } from "@/lib/espnFantasy";
 import type { DraftAnalysis } from "@/lib/draftAnalysis";
 
@@ -139,7 +140,9 @@ export default function LeagueDraftClient() {
                   )}
                 </div>
                 <div className="truncate text-xs text-gray-400">
-                  {p.teamName}
+                  <Link href={`/league/team/${p.teamId}`} className="hover:underline hover:text-gray-300">
+                    {p.teamName}
+                  </Link>
                   {p.isKeeper && <span className="ml-1.5 text-amber-500">Keeper</span>}
                   {p.isAutoDraft && <span className="ml-1.5 text-gray-600">Auto</span>}
                 </div>
@@ -172,7 +175,10 @@ export default function LeagueDraftClient() {
               <div key={t.teamId} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
                 <div className="flex items-baseline justify-between gap-2">
                   <h3 className="text-sm font-bold text-white">
-                    {t.teamName} <span className="font-normal text-gray-500">({t.ownerName})</span>
+                    <Link href={`/league/team/${t.teamId}`} className="hover:underline">
+                      {t.teamName}
+                    </Link>{" "}
+                    <span className="font-normal text-gray-500">({t.ownerName})</span>
                   </h3>
                   <span className="shrink-0 text-xs text-gray-500">Slot {t.slot}</span>
                 </div>

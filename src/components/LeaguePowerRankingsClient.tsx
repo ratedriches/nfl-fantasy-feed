@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { PowerRanking } from "@/lib/espnFantasy";
 
 export default function LeaguePowerRankingsClient() {
@@ -75,7 +76,12 @@ export default function LeaguePowerRankingsClient() {
               <div className="h-8 w-8 shrink-0 rounded-full bg-gray-800" />
             )}
             <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-semibold text-white">{r.teamName}</div>
+              <Link
+                href={`/league/team/${r.teamId}`}
+                className="block truncate text-sm font-semibold text-white hover:underline"
+              >
+                {r.teamName}
+              </Link>
               <div className="truncate text-xs text-gray-500">
                 {r.actualWins}-{r.actualLosses} actual · {r.allPlayWins}-{r.allPlayLosses} all-play ·{" "}
                 {r.avgPointsRecent.toFixed(1)} avg (L3)
