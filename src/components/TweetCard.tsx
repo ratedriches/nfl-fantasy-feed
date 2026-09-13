@@ -21,8 +21,15 @@ export default function TweetCard({
   tweet: Tweet;
   teamColor: string;
 }) {
+  const href = tweet.url ?? `https://x.com/${tweet.authorHandle}/status/${tweet.id}`;
+
   return (
-    <div className="rounded-xl border border-gray-800 bg-gray-900 p-3.5">
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block rounded-xl border border-gray-800 bg-gray-900 p-3.5 active:bg-gray-800"
+    >
       {/* Author row */}
       <div className="mb-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -51,6 +58,6 @@ export default function TweetCard({
         <span>🔁 {tweet.retweets.toLocaleString()}</span>
         <span>❤️ {tweet.likes.toLocaleString()}</span>
       </div>
-    </div>
+    </a>
   );
 }

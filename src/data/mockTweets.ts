@@ -8,6 +8,8 @@ export interface Tweet {
   likes: number;
   retweets: number;
   replies: number;
+  /** Link to the original post on X. Mock tweets don't have a real one. */
+  url?: string;
 }
 
 const now = new Date();

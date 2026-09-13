@@ -32,6 +32,7 @@ function cacheKey(slug: string): string {
 interface RawTweet {
   id: string;
   text: string;
+  url?: string;
   createdAt: string;
   likeCount?: number;
   retweetCount?: number;
@@ -72,6 +73,7 @@ function toTweet(raw: RawTweet, team: Team, authorName: string, authorHandle: st
     likes: raw.likeCount ?? 0,
     retweets: raw.retweetCount ?? 0,
     replies: raw.replyCount ?? 0,
+    url: raw.url ?? `https://x.com/${authorHandle}/status/${raw.id}`,
   };
 }
 
