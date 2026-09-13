@@ -24,8 +24,6 @@ export const teams: Team[] = [
     textColor: "#ffffff",
     beatWriters: [
       { name: "Darren Urban", handle: "Cardschatter", outlet: "AZCardinals.com" },
-      { name: "Josh Weinfuss", handle: "jweinfuss", outlet: "ESPN" },
-      { name: "Tyler Drake", handle: "Tdrake4tds", outlet: "AZCardinals.com" },
     ],
   },
   {
@@ -36,9 +34,7 @@ export const teams: Team[] = [
     secondaryColor: "#000000",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Tori McElhaney", handle: "tori_mcelhaney", outlet: "AtlantaFalcons.com" },
-      { name: "D. Orlando Ledbetter", handle: "DOrlandoAJC", outlet: "Atlanta Journal-Constitution" },
-      { name: "Marc Raimondi", handle: "marcraimondi", outlet: "ESPN" },
+      { name: "D. Orlando Ledbetter", handle: "BowTieSportsGuy", outlet: "Falcons Beat" },
     ],
   },
   {
@@ -50,8 +46,6 @@ export const teams: Team[] = [
     textColor: "#ffffff",
     beatWriters: [
       { name: "Jeff Zrebiec", handle: "jeffzrebiec", outlet: "The Athletic" },
-      { name: "Jonas Shaffer", handle: "jonas_shaffer", outlet: "Baltimore Banner" },
-      { name: "Jamison Hensley", handle: "jamisonhensley", outlet: "ESPN" },
     ],
   },
   {
@@ -63,8 +57,6 @@ export const teams: Team[] = [
     textColor: "#ffffff",
     beatWriters: [
       { name: "Joe Buscaglia", handle: "JoeBuscaglia", outlet: "The Athletic" },
-      { name: "Matt Parrino", handle: "MattParrino", outlet: "NYup.com" },
-      { name: "Alaina Getzenberg", handle: "agetzenberg", outlet: "ESPN" },
     ],
   },
   {
@@ -76,8 +68,6 @@ export const teams: Team[] = [
     textColor: "#ffffff",
     beatWriters: [
       { name: "Joe Person", handle: "josephperson", outlet: "The Athletic" },
-      { name: "Jonathan Jones", handle: "jjones9", outlet: "CBS Sports" },
-      { name: "Max Henson", handle: "PanthersMax", outlet: "Panthers.com" },
     ],
   },
   {
@@ -88,9 +78,7 @@ export const teams: Team[] = [
     secondaryColor: "#C83803",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Brad Biggs", handle: "BradBiggs", outlet: "Chicago Tribune" },
-      { name: "Adam Jahns", handle: "adamjahns", outlet: "The Athletic" },
-      { name: "Courtney Cronin", handle: "CourtneyRCronin", outlet: "ESPN" },
+      { name: "Dan Wiederer", handle: "danwiederer", outlet: "Chicago Tribune" },
     ],
   },
   {
@@ -101,9 +89,7 @@ export const teams: Team[] = [
     secondaryColor: "#000000",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Tyler Dragon", handle: "TheTylerDragon", outlet: "Cincinnati Enquirer" },
-      { name: "Jay Morrison", handle: "JayMorrisonATH", outlet: "The Athletic" },
-      { name: "Ben Baby", handle: "Ben_Baby", outlet: "ESPN" },
+      { name: "Jay Morrison", handle: "ByJayMorrison", outlet: "The Athletic" },
     ],
   },
   {
@@ -114,9 +100,7 @@ export const teams: Team[] = [
     secondaryColor: "#FF3C00",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Mary Kay Cabot", handle: "MaryKayCabot", outlet: "Cleveland.com" },
-      { name: "Dan Labbe", handle: "dan_labbe", outlet: "Cleveland.com" },
-      { name: "Jake Trotter", handle: "Jake_Trotter", outlet: "ESPN" },
+      { name: "Zac Jackson", handle: "AkronJackson", outlet: "The Athletic" },
     ],
   },
   {
@@ -127,9 +111,7 @@ export const teams: Team[] = [
     secondaryColor: "#869397",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Clarence Hill Jr.", handle: "clarencehilljr", outlet: "Fort Worth Star-Telegram" },
-      { name: "Todd Archer", handle: "toddarcher", outlet: "ESPN" },
-      { name: "Calvin Watkins", handle: "calvinwatkins", outlet: "Dallas Morning News" },
+      { name: "Jon Machota", handle: "jonmachota", outlet: "The Athletic" },
     ],
   },
   {
@@ -140,9 +122,7 @@ export const teams: Team[] = [
     secondaryColor: "#002244",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Mike Klis", handle: "mikeklis", outlet: "9NEWS Denver" },
-      { name: "Troy Renck", handle: "TroyRenck", outlet: "Denver7" },
-      { name: "Jeff Legwold", handle: "Jeff_Legwold", outlet: "ESPN" },
+      { name: "Mike Klis", handle: "mikeklis9news", outlet: "9NEWS Denver" },
     ],
   },
   {
@@ -153,9 +133,7 @@ export const teams: Team[] = [
     secondaryColor: "#B0B7BC",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Chris Burke", handle: "ChrisBurkeNFL", outlet: "The Athletic" },
       { name: "Tim Twentyman", handle: "ttwentyman", outlet: "DetroitLions.com" },
-      { name: "Eric Woodyard", handle: "E_Woodyard", outlet: "ESPN" },
     ],
   },
   {
@@ -166,9 +144,8 @@ export const teams: Team[] = [
     secondaryColor: "#FFB612",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Rob Demovsky", handle: "RobDemovsky", outlet: "ESPN" },
-      { name: "Tom Silverstein", handle: "TomSilverstein", outlet: "Milwaukee Journal Sentinel" },
       { name: "Matt Schneidman", handle: "mattschneidman", outlet: "The Athletic" },
+      { name: "Rob Demovsky", handle: "RobDemovsky", outlet: "ESPN" },
     ],
   },
   {
@@ -180,8 +157,6 @@ export const teams: Team[] = [
     textColor: "#ffffff",
     beatWriters: [
       { name: "Aaron Wilson", handle: "AaronWilson_NFL", outlet: "KPRC 2" },
-      { name: "DJ Bien-Aime", handle: "Djbienaime", outlet: "ESPN" },
-      { name: "Mark Berman", handle: "MarkBermanFox26", outlet: "Fox 26 Houston" },
     ],
   },
   {
@@ -192,9 +167,7 @@ export const teams: Team[] = [
     secondaryColor: "#A2AAAD",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Zak Keefer", handle: "zkeefer", outlet: "The Athletic" },
-      { name: "Joel Erickson", handle: "JoelAErickson", outlet: "Indianapolis Star" },
-      { name: "Stephen Holder", handle: "HolderStephen", outlet: "ESPN" },
+      { name: "Mike Chappell", handle: "mchappell51", outlet: "Colts Beat" },
     ],
   },
   {
@@ -205,9 +178,8 @@ export const teams: Team[] = [
     secondaryColor: "#D7A22A",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "John Oehser", handle: "johnOehser", outlet: "Jaguars.com" },
-      { name: "Mia O'Brien", handle: "MiaOBrienTV", outlet: "Action News Jax" },
-      { name: "Michael DiRocco", handle: "ESPNdirocco", outlet: "ESPN" },
+      { name: "John Oehser", handle: "JohnOehser", outlet: "Jaguars.com" },
+      { name: "Demetrius Harvey", handle: "Demetrius82", outlet: "Jaguars Beat" },
     ],
   },
   {
@@ -218,9 +190,7 @@ export const teams: Team[] = [
     secondaryColor: "#FFB81C",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Adam Teicher", handle: "adamteicher", outlet: "ESPN" },
-      { name: "BJ Kissel", handle: "ChiefsReporter", outlet: "Chiefs.com" },
-      { name: "Herbie Teope", handle: "HerbieTeope", outlet: "Kansas City Star" },
+      { name: "Sam McDowell", handle: "SamMcDowell11", outlet: "Kansas City Star" },
     ],
   },
   {
@@ -231,9 +201,7 @@ export const teams: Team[] = [
     secondaryColor: "#A5ACAF",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Vic Tafur", handle: "VicTafur", outlet: "The Athletic" },
-      { name: "Vincent Bonsignore", handle: "VinnyBonsignore", outlet: "Las Vegas Review-Journal" },
-      { name: "Paul Gutierrez", handle: "PGutierrezESPN", outlet: "ESPN" },
+      { name: "Paul Gutierrez", handle: "PaulHGutierrez", outlet: "ESPN" },
     ],
   },
   {
@@ -244,9 +212,7 @@ export const teams: Team[] = [
     secondaryColor: "#FFC20E",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Gilbert Manzano", handle: "gilbertmanzano", outlet: "Orange County Register" },
-      { name: "Daniel Popper", handle: "danielrpopper", outlet: "The Athletic" },
-      { name: "Shelley Smith", handle: "shelleysmith98", outlet: "ESPN" },
+      { name: "Kris Rhim", handle: "krisrhim1", outlet: "Chargers Beat" },
     ],
   },
   {
@@ -257,9 +223,7 @@ export const teams: Team[] = [
     secondaryColor: "#FFA300",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Gary Klein", handle: "LATimesklein", outlet: "LA Times" },
-      { name: "Stu Jackson", handle: "StuJacksonRams", outlet: "Rams.com" },
-      { name: "Sarah Barshop", handle: "sarahbarshop", outlet: "ESPN" },
+      { name: "Stu Jackson", handle: "StuJRams", outlet: "Rams.com" },
     ],
   },
   {
@@ -270,9 +234,7 @@ export const teams: Team[] = [
     secondaryColor: "#FC4C02",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Barry Jackson", handle: "flasportsbuzz", outlet: "Miami Herald" },
-      { name: "Cameron Wolfe", handle: "CameronWolfe", outlet: "ESPN" },
-      { name: "Joe Schad", handle: "schadjoe", outlet: "Palm Beach Post" },
+      { name: "David Furones", handle: "DavidFurones_", outlet: "South Florida Sun Sentinel" },
     ],
   },
   {
@@ -284,8 +246,6 @@ export const teams: Team[] = [
     textColor: "#ffffff",
     beatWriters: [
       { name: "Ben Goessling", handle: "BenGoessling", outlet: "Minneapolis Star Tribune" },
-      { name: "Chad Graff", handle: "ChadGraff", outlet: "The Athletic" },
-      { name: "Kevin Seifert", handle: "SeifertESPN", outlet: "ESPN" },
     ],
   },
   {
@@ -296,7 +256,6 @@ export const teams: Team[] = [
     secondaryColor: "#C60C30",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Karen Guregian", handle: "KGuregian", outlet: "Boston Herald" },
       { name: "Phil Perry", handle: "PhilAPerry", outlet: "NBC Sports Boston" },
       { name: "Mike Reiss", handle: "MikeReiss", outlet: "ESPN" },
     ],
@@ -310,8 +269,6 @@ export const teams: Team[] = [
     textColor: "#ffffff",
     beatWriters: [
       { name: "Katherine Terrell", handle: "Kat_Terrell", outlet: "ESPN" },
-      { name: "Jeff Duncan", handle: "JeffDuncanTimes", outlet: "New Orleans Times-Picayune" },
-      { name: "Luke Johnson", handle: "ByLukeJohnson", outlet: "New Orleans Times-Picayune" },
     ],
   },
   {
@@ -322,9 +279,8 @@ export const teams: Team[] = [
     secondaryColor: "#A71930",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Jordan Raanan", handle: "JordanRaanan", outlet: "ESPN" },
       { name: "Dan Duggan", handle: "DDuggan21", outlet: "The Athletic" },
-      { name: "Art Stapleton", handle: "art_stapleton", outlet: "NorthJersey.com" },
+      { name: "Jordan Raanan", handle: "JordanRaanan", outlet: "ESPN" },
     ],
   },
   {
@@ -335,9 +291,7 @@ export const teams: Team[] = [
     secondaryColor: "#000000",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Connor Hughes", handle: "Connor_J_Hughes", outlet: "The Athletic" },
-      { name: "Rich Cimini", handle: "RichCimini", outlet: "ESPN" },
-      { name: "Andy Vasquez", handle: "andy_vasquez", outlet: "NorthJersey.com" },
+      { name: "Brian Costello", handle: "BrianCoz", outlet: "New York Post" },
     ],
   },
   {
@@ -348,8 +302,6 @@ export const teams: Team[] = [
     secondaryColor: "#A5ACAF",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Zack Rosenblatt", handle: "ZackRosenblatt", outlet: "The Athletic" },
-      { name: "EJ Smith", handle: "EJSmith94", outlet: "Philadelphia Inquirer" },
       { name: "Tim McManus", handle: "Tim_McManus", outlet: "ESPN" },
     ],
   },
@@ -361,9 +313,7 @@ export const teams: Team[] = [
     secondaryColor: "#FFB612",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Gerry Dulac", handle: "gerrydulac", outlet: "Pittsburgh Post-Gazette" },
-      { name: "Mark Kaboly", handle: "MarkKaboly", outlet: "The Athletic" },
-      { name: "Brooke Pryor", handle: "bepryor", outlet: "ESPN" },
+      { name: "Nick Farabaugh", handle: "FarabaughFB", outlet: "Steelers Beat" },
     ],
   },
   {
@@ -374,9 +324,7 @@ export const teams: Team[] = [
     secondaryColor: "#B3995D",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Matt Barrows", handle: "mattbarrows", outlet: "The Athletic" },
-      { name: "Nick Wagoner", handle: "nwagoner", outlet: "ESPN" },
-      { name: "David Lombardi", handle: "LombardiHimself", outlet: "The Athletic" },
+      { name: "Matt Maiocco", handle: "MaioccoNBCS", outlet: "NBC Sports Bay Area" },
     ],
   },
   {
@@ -387,7 +335,6 @@ export const teams: Team[] = [
     secondaryColor: "#69BE28",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Bob Condotta", handle: "bcondotta", outlet: "Seattle Times" },
       { name: "Brady Henderson", handle: "BradyHenderson", outlet: "ESPN" },
       { name: "Gregg Bell", handle: "gbellseattle", outlet: "The News Tribune" },
     ],
@@ -400,9 +347,7 @@ export const teams: Team[] = [
     secondaryColor: "#FF7900",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Greg Auman", handle: "gregauman", outlet: "The Athletic" },
       { name: "Rick Stroud", handle: "NFLSTROUD", outlet: "Tampa Bay Times" },
-      { name: "Jenna Laine", handle: "JennaLaineESPN", outlet: "ESPN" },
     ],
   },
   {
@@ -413,9 +358,8 @@ export const teams: Team[] = [
     secondaryColor: "#4B92DB",
     textColor: "#ffffff",
     beatWriters: [
-      { name: "Jim Wyatt", handle: "jwyattsports", outlet: "Titans.com" },
-      { name: "Paul Kuharsky", handle: "PaulKuharskyNFL", outlet: "paulkuharsky.com" },
       { name: "Turron Davenport", handle: "TDavenport_NFL", outlet: "ESPN" },
+      { name: "Jim Wyatt", handle: "jwyattsports", outlet: "Titans.com" },
     ],
   },
   {
@@ -428,7 +372,6 @@ export const teams: Team[] = [
     beatWriters: [
       { name: "John Keim", handle: "john_keim", outlet: "ESPN" },
       { name: "Nicki Jhabvala", handle: "NickiJhabvala", outlet: "Washington Post" },
-      { name: "Craig Hoffman", handle: "CraigHoffman", outlet: "106.7 The Fan" },
     ],
   },
 ];
