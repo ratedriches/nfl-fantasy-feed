@@ -193,6 +193,59 @@ export default function LeagueDraftClient() {
           </div>
         )}
       </div>
+
+      {analysis && (
+        <>
+          <div>
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">
+              {summary?.year ?? analysis.year} Draft Awards
+            </h2>
+            <div className="flex flex-col gap-3">
+              {(
+                [
+                  ["🏅", "Best Draft", analysis.awards.bestDraft],
+                  ["💎", "Best Value Pick", analysis.awards.bestValuePick],
+                  ["📉", "Biggest Reach", analysis.awards.biggestReach],
+                  ["🎲", "Most Likely to Be Wrong (in a Good Way)", analysis.awards.wrongInAGoodWay],
+                  ["⚠️", "Most Likely to Be Wrong (in a Bad Way)", analysis.awards.wrongInABadWay],
+                  ["🚨", "Immediate Action Required", analysis.awards.immediateActionRequired],
+                ] as const
+              ).map(([icon, title, award]) => (
+                <div key={title} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{icon}</span>
+                    <h3 className="text-sm font-bold text-white">{title}</h3>
+                  </div>
+                  <p className="mt-1.5 text-sm">
+                    <Link href={`/league/team/${award.teamId}`} className="font-semibold text-emerald-400 hover:underline">
+                      {award.teamName}
+                    </Link>{" "}
+                    <span className="text-gray-500">({award.ownerName})</span>
+                    {award.pick && <span className="text-gray-500"> — {award.pick}</span>}
+                  </p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-gray-300">{award.reason}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-400">League Wide Takeaways</h2>
+            <div className="flex flex-col gap-3">
+              {analysis.leagueTakeaways.map((takeaway, i) => (
+                <div key={i} className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-800 text-[11px] font-bold text-gray-400">
+                      {i + 1}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-sm leading-relaxed text-gray-300">{takeaway}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

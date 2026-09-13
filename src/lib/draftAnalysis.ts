@@ -46,11 +46,30 @@ export interface TeamDraftAnalysis {
   gradeNote: string;
 }
 
+export interface DraftAward {
+  teamId: number;
+  teamName: string;
+  ownerName: string;
+  pick: string | null;
+  reason: string;
+}
+
+export interface DraftAwards {
+  bestDraft: DraftAward;
+  bestValuePick: DraftAward;
+  biggestReach: DraftAward;
+  wrongInAGoodWay: DraftAward;
+  wrongInABadWay: DraftAward;
+  immediateActionRequired: DraftAward;
+}
+
 export interface DraftAnalysis {
   year: number;
   generatedAt: number;
   round1Summary: string;
   teams: TeamDraftAnalysis[];
+  awards: DraftAwards;
+  leagueTakeaways: string[];
 }
 
 export async function getDraftAnalysis(): Promise<DraftAnalysis | null> {
@@ -127,7 +146,7 @@ export async function buildAndStoreDraftAnalysis(): Promise<{ ok: boolean; reaso
   const client = new Anthropic();
   const stream = client.messages.stream({
     model: "claude-opus-5",
-    max_tokens: 16000,
+    max_tokens: 32000,
     system: `You are a sharp, opinionated fantasy football draft analyst grading every team in a real league's just-finished draft. Use ONLY the real players, rounds, and picks given below — never invent a player, stat, or ADP figure. Each pick below is already labeled "Round.PickInRound" (e.g. "3.9" means round 3, the 9th pick of that round — NOT the overall pick number). When you reference a pick, copy that exact "Round.PickInRound" label verbatim from the data — do not compute or substitute the overall pick number. League format: ${leagueFormat}
 
 For EACH team, write:
@@ -140,9 +159,19 @@ Grade teams relative to each other, not in isolation — calibrate so grades act
 
 Also write "round1Summary": 1-2 sentences on how round 1 unfolded overall (position runs, notable picks, reaches or falls).
 
+Then hand out these six "2026 Draft Awards" — each is a JSON object {"teamId": <number>, "pick": "Round.PickInRound Player Name" or null, "reason": "..."}. "pick" is only for the two pick-specific awards below; use null for the team-wide awards.
+- "bestDraft": the single best-drafted team in the league. 2-3 sentences.
+- "bestValuePick": the single best value pick in the whole draft (a specific player who fell far below their real worth). Set "pick" to that exact pick. 2-3 sentences.
+- "biggestReach": the single biggest reach in the whole draft (a specific player taken well above where they should have gone). Set "pick" to that exact pick. 2-3 sentences.
+- "wrongInAGoodWay": the team whose strategy/build is unconventional or risky — not something you'd generally recommend — but could pay off big by season's end. 3-4 sentences explaining the bet and why it could hit.
+- "wrongInABadWay": the team whose strategy/build looks genuinely shaky and needs real help. 3-4 sentences on what's wrong.
+- "immediateActionRequired": the team with the unambiguously worst draft, who needs to act on waivers right now. 3-4 sentences that name the specific positional need(s) and the type of player/role they should target (e.g. "a bell-cow RB2" or "a streaming TE") — do not invent specific free agent names, since you don't know who's actually available.
+
+Finally write "leagueTakeaways": an array of exactly 3 strings, each a few sentences, on the biggest overall patterns you noticed across the whole draft and how the league's rosters are built this season (e.g. positional trends, format-driven strategy shifts, risk distribution across teams). When you name a team here, ALWAYS use its real team name exactly as given in the data (e.g. "Smash Hall of y'all") — never refer to a team as "Team 9" or by its teamId number.
+
 Respond with ONLY this JSON shape, nothing else, no markdown fences:
-{"round1Summary": "...", "teams": [{"teamId": <number>, "bestPart": "...", "worstPart": "...", "grade": "...", "gradeNote": "..."}]}
-Include exactly one entry per team listed below, using the exact teamId numbers given.`,
+{"round1Summary": "...", "teams": [{"teamId": <number>, "bestPart": "...", "worstPart": "...", "grade": "...", "gradeNote": "..."}], "awards": {"bestDraft": {...}, "bestValuePick": {...}, "biggestReach": {...}, "wrongInAGoodWay": {...}, "wrongInABadWay": {...}, "immediateActionRequired": {...}}, "leagueTakeaways": ["...", "...", "..."]}
+Include exactly one team entry per team listed below, using the exact teamId numbers given.`,
     messages: [{ role: "user", content: teamsPromptSection }],
   });
 
@@ -150,13 +179,15 @@ Include exactly one entry per team listed below, using the exact teamId numbers 
   const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
   if (!textBlock) return { ok: false, reason: "no_response" };
 
-  let parsed: { round1Summary?: string; teams?: any[] };
+  let parsed: { round1Summary?: string; teams?: any[]; awards?: Record<string, any>; leagueTakeaways?: string[] };
   try {
     parsed = JSON.parse(extractJson(textBlock.text));
   } catch {
-    return { ok: false, reason: "bad_json" };
+    return { ok: false, reason: `bad_json (stop_reason: ${response.stop_reason}, length: ${textBlock.text.length})` };
   }
-  if (!parsed.round1Summary || !Array.isArray(parsed.teams)) return { ok: false, reason: "incomplete_response" };
+  if (!parsed.round1Summary || !Array.isArray(parsed.teams) || !parsed.awards || !Array.isArray(parsed.leagueTakeaways)) {
+    return { ok: false, reason: "incomplete_response" };
+  }
 
   const teamMetaById = new Map(teamBlocks.map((t) => [t.teamId, t]));
   const teams: TeamDraftAnalysis[] = parsed.teams
@@ -177,11 +208,41 @@ Include exactly one entry per team listed below, using the exact teamId numbers 
     .filter((t): t is TeamDraftAnalysis => t !== null)
     .sort((a, b) => a.slot - b.slot);
 
+  function resolveAward(raw: any): DraftAward | null {
+    if (!raw || typeof raw.teamId !== "number") return null;
+    const meta = teamMetaById.get(raw.teamId);
+    if (!meta) return null;
+    return {
+      teamId: raw.teamId,
+      teamName: meta.teamName,
+      ownerName: meta.ownerName,
+      pick: raw.pick ?? null,
+      reason: raw.reason ?? "",
+    };
+  }
+
+  const awardKeys: (keyof DraftAwards)[] = [
+    "bestDraft",
+    "bestValuePick",
+    "biggestReach",
+    "wrongInAGoodWay",
+    "wrongInABadWay",
+    "immediateActionRequired",
+  ];
+  const resolvedAwards: Partial<DraftAwards> = {};
+  for (const key of awardKeys) {
+    const award = resolveAward(parsed.awards[key]);
+    if (!award) return { ok: false, reason: "incomplete_response" };
+    resolvedAwards[key] = award;
+  }
+
   const analysis: DraftAnalysis = {
     year: summary.year,
     generatedAt: Date.now(),
     round1Summary: parsed.round1Summary,
     teams,
+    awards: resolvedAwards as DraftAwards,
+    leagueTakeaways: parsed.leagueTakeaways.filter((t): t is string => typeof t === "string"),
   };
 
   await redis.set(analysisKey(summary.year), JSON.stringify(analysis));
