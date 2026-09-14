@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { TeamDetail } from "@/lib/teamDetail";
 
 export default function TeamDetailClient({ teamId }: { teamId: number }) {
@@ -178,6 +179,14 @@ export default function TeamDetailClient({ teamId }: { teamId: number }) {
                 <p className="mt-1 text-sm text-gray-200">{m.text}</p>
               </div>
             ))}
+            {team.hasMoreChatMentions && (
+              <Link
+                href={`/league/team/${team.id}/mentions`}
+                className="mt-1 text-center text-xs font-semibold text-gray-400 hover:text-gray-200 hover:underline"
+              >
+                See more →
+              </Link>
+            )}
           </div>
         )}
       </div>

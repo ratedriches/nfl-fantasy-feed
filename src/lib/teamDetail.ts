@@ -82,8 +82,35 @@ export interface TeamDetail {
   schedule: TeamScheduleEntry[];
   draftPicks: TeamDraftPick[];
   chatMentions: ChatMessage[];
+  hasMoreChatMentions: boolean;
   standings: TeamStandingsPosition | null;
   powerRanking: TeamPowerRankingHistory;
+}
+
+const CHAT_MENTION_PREVIEW_LIMIT = 5;
+
+function matchesMention(text: string, teamNameLower: string, ownerNameLower: string): boolean {
+  const lower = text.toLowerCase();
+  return (Boolean(teamNameLower) && lower.includes(teamNameLower)) || (Boolean(ownerNameLower) && lower.includes(ownerNameLower));
+}
+
+// Full mention history — scans the entire stored chat log (not just a recent
+// window), for the dedicated "see all mentions" page.
+export async function getAllTeamChatMentions(teamId: number): Promise<ChatMessage[] | null> {
+  if (!isLeagueConfigured()) return null;
+
+  const { teams } = await getLeagueMatchups();
+  const team = teams.find((t) => t.id === teamId);
+  if (!team) return null;
+
+  const ownerNames = await fetchOwnerNames();
+  const teamNameLower = team.name.toLowerCase();
+  const ownerNameLower = (ownerNames.get(teamId) ?? "").toLowerCase();
+
+  const allMessages = await getMessages(500);
+  return allMessages
+    .filter((m) => matchesMention(m.text, teamNameLower, ownerNameLower))
+    .sort((a, b) => b.timestamp - a.timestamp);
 }
 
 export async function getTeamDetail(teamId: number): Promise<TeamDetail | null> {
@@ -96,7 +123,7 @@ export async function getTeamDetail(teamId: number): Promise<TeamDetail | null> 
   const [ownerNames, { picks }, allMessages, { teams: standingsTeams, divisions }, powerRanking] = await Promise.all([
     fetchOwnerNames(),
     getDraftRecap(),
-    getMessages(150),
+    getMessages(500),
     getLeagueStandings(),
     getTeamPowerRankingHistory(teamId),
   ]);
@@ -148,13 +175,11 @@ export async function getTeamDetail(teamId: number): Promise<TeamDetail | null> 
 
   const teamNameLower = team.name.toLowerCase();
   const ownerNameLower = (ownerNames.get(teamId) ?? "").toLowerCase();
-  const chatMentions = allMessages
-    .filter((m) => {
-      const text = m.text.toLowerCase();
-      return (teamNameLower && text.includes(teamNameLower)) || (ownerNameLower && text.includes(ownerNameLower));
-    })
-    .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, 10);
+  const allMatchingMentions = allMessages
+    .filter((m) => matchesMention(m.text, teamNameLower, ownerNameLower))
+    .sort((a, b) => b.timestamp - a.timestamp);
+  const chatMentions = allMatchingMentions.slice(0, CHAT_MENTION_PREVIEW_LIMIT);
+  const hasMoreChatMentions = allMatchingMentions.length > CHAT_MENTION_PREVIEW_LIMIT;
 
   let standings: TeamStandingsPosition | null = null;
   const overallIndex = standingsTeams.findIndex((t) => t.id === teamId);
@@ -185,6 +210,7 @@ export async function getTeamDetail(teamId: number): Promise<TeamDetail | null> 
     schedule,
     draftPicks,
     chatMentions,
+    hasMoreChatMentions,
     standings,
     powerRanking,
   };
