@@ -68,6 +68,58 @@ export default function TeamDetailClient({ teamId }: { teamId: number }) {
         </div>
       </div>
 
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Standings</h2>
+          {team.standings ? (
+            <div className="flex flex-col gap-1 text-sm">
+              <p className="text-gray-200">
+                <span className="font-bold text-white">#{team.standings.overallRank}</span>{" "}
+                <span className="text-gray-500">of {team.standings.totalTeams} overall</span>
+              </p>
+              {team.standings.divisionName && (
+                <p className="text-gray-200">
+                  <span className="font-bold text-white">#{team.standings.divisionRank}</span>{" "}
+                  <span className="text-gray-500">
+                    of {team.standings.divisionTotalTeams} in {team.standings.divisionName}
+                  </span>
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">Not available yet.</p>
+          )}
+        </div>
+
+        <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+          <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Power Ranking</h2>
+          {team.powerRanking.current ? (
+            <div className="flex flex-col gap-1 text-sm">
+              <p className="text-gray-200">
+                <span className="font-bold text-white">#{team.powerRanking.current.rank}</span>{" "}
+                <span className="text-gray-500">
+                  of {team.powerRanking.totalTeams} currently (wk {team.powerRanking.current.week})
+                </span>
+              </p>
+              {team.powerRanking.highest && (
+                <p className="text-emerald-400">
+                  Best: #{team.powerRanking.highest.rank}{" "}
+                  <span className="text-gray-500">(week {team.powerRanking.highest.week})</span>
+                </p>
+              )}
+              {team.powerRanking.lowest && (
+                <p className="text-red-400">
+                  Worst: #{team.powerRanking.lowest.rank}{" "}
+                  <span className="text-gray-500">(week {team.powerRanking.lowest.week})</span>
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">Not enough data yet.</p>
+          )}
+        </div>
+      </div>
+
       <div>
         <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Week-by-Week</h2>
         {team.schedule.length === 0 ? (

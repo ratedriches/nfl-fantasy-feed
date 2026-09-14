@@ -1,4 +1,11 @@
-import { getLeagueMatchups, getDraftRecap, isLeagueConfigured } from "@/lib/espnFantasy";
+import {
+  getLeagueMatchups,
+  getDraftRecap,
+  getLeagueStandings,
+  getTeamPowerRankingHistory,
+  isLeagueConfigured,
+  type TeamPowerRankingHistory,
+} from "@/lib/espnFantasy";
 import { getMessages, type ChatMessage } from "@/lib/leagueChat";
 
 const LEAGUE_ID = process.env.ESPN_LEAGUE_ID ?? "";
@@ -54,6 +61,14 @@ export interface TeamDraftPick {
   isKeeper: boolean;
 }
 
+export interface TeamStandingsPosition {
+  overallRank: number;
+  totalTeams: number;
+  divisionName: string | null;
+  divisionRank: number | null;
+  divisionTotalTeams: number | null;
+}
+
 export interface TeamDetail {
   id: number;
   name: string;
@@ -67,6 +82,8 @@ export interface TeamDetail {
   schedule: TeamScheduleEntry[];
   draftPicks: TeamDraftPick[];
   chatMentions: ChatMessage[];
+  standings: TeamStandingsPosition | null;
+  powerRanking: TeamPowerRankingHistory;
 }
 
 export async function getTeamDetail(teamId: number): Promise<TeamDetail | null> {
@@ -76,10 +93,12 @@ export async function getTeamDetail(teamId: number): Promise<TeamDetail | null> 
   const team = teams.find((t) => t.id === teamId);
   if (!team) return null;
 
-  const [ownerNames, { picks }, allMessages] = await Promise.all([
+  const [ownerNames, { picks }, allMessages, { teams: standingsTeams, divisions }, powerRanking] = await Promise.all([
     fetchOwnerNames(),
     getDraftRecap(),
     getMessages(150),
+    getLeagueStandings(),
+    getTeamPowerRankingHistory(teamId),
   ]);
 
   const teamById = new Map(teams.map((t) => [t.id, t]));
@@ -137,6 +156,22 @@ export async function getTeamDetail(teamId: number): Promise<TeamDetail | null> 
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 10);
 
+  let standings: TeamStandingsPosition | null = null;
+  const overallIndex = standingsTeams.findIndex((t) => t.id === teamId);
+  if (overallIndex !== -1) {
+    const thisTeam = standingsTeams[overallIndex];
+    const division = divisions.find((d) => d.id === thisTeam.divisionId) ?? null;
+    const divisionTeams = division ? standingsTeams.filter((t) => t.divisionId === division.id) : [];
+    const divisionIndex = division ? divisionTeams.findIndex((t) => t.id === teamId) : -1;
+    standings = {
+      overallRank: overallIndex + 1,
+      totalTeams: standingsTeams.length,
+      divisionName: division?.name ?? null,
+      divisionRank: divisionIndex !== -1 ? divisionIndex + 1 : null,
+      divisionTotalTeams: division ? divisionTeams.length : null,
+    };
+  }
+
   return {
     id: team.id,
     name: team.name,
@@ -150,5 +185,7 @@ export async function getTeamDetail(teamId: number): Promise<TeamDetail | null> 
     schedule,
     draftPicks,
     chatMentions,
+    standings,
+    powerRanking,
   };
 }

@@ -384,18 +384,23 @@ export interface PowerRanking {
   avgPointsRecent: number;
 }
 
-export async function getPowerRankings(): Promise<{ rankings: PowerRanking[]; weeksConsidered: number[] }> {
-  const { teams, matchups, currentMatchupPeriod } = await getLeagueMatchups();
-  if (teams.length === 0) return { rankings: [], weeksConsidered: [] };
-
+function buildWeekScores(matchups: Matchup[], throughWeek: number): Map<number, Map<number, number>> {
   const weekScores = new Map<number, Map<number, number>>();
   for (const m of matchups) {
-    if (m.matchupPeriodId > currentMatchupPeriod) continue;
+    if (m.matchupPeriodId > throughWeek) continue;
     if (!weekScores.has(m.matchupPeriodId)) weekScores.set(m.matchupPeriodId, new Map());
     const wm = weekScores.get(m.matchupPeriodId)!;
     if (m.homeTeamId !== null) wm.set(m.homeTeamId, m.homeScore);
     if (m.awayTeamId !== null && m.awayScore !== null) wm.set(m.awayTeamId, m.awayScore);
   }
+  return weekScores;
+}
+
+// Computes power rankings as they would have stood after `throughWeek` —
+// i.e. using only weeks up to and including it. Reused both for the live
+// "current" ranking and for reconstructing each team's week-by-week history.
+function computePowerRankingsThroughWeek(teams: LeagueTeam[], matchups: Matchup[], throughWeek: number): PowerRanking[] {
+  const weekScores = buildWeekScores(matchups, throughWeek);
 
   const weeksPlayed = Array.from(weekScores.keys())
     .filter((w) => Array.from(weekScores.get(w)!.values()).some((v) => v > 0))
@@ -456,7 +461,58 @@ export async function getPowerRankings(): Promise<{ rankings: PowerRanking[]; we
   rankings.sort((a, b) => b.powerScore - a.powerScore);
   rankings.forEach((r, i) => (r.rank = i + 1));
 
+  return rankings;
+}
+
+export async function getPowerRankings(): Promise<{ rankings: PowerRanking[]; weeksConsidered: number[] }> {
+  const { teams, matchups, currentMatchupPeriod } = await getLeagueMatchups();
+  if (teams.length === 0) return { rankings: [], weeksConsidered: [] };
+
+  const weekScores = buildWeekScores(matchups, currentMatchupPeriod);
+  const weeksPlayed = Array.from(weekScores.keys())
+    .filter((w) => Array.from(weekScores.get(w)!.values()).some((v) => v > 0))
+    .sort((a, b) => a - b);
+
+  const rankings = computePowerRankingsThroughWeek(teams, matchups, currentMatchupPeriod);
   return { rankings, weeksConsidered: weeksPlayed };
+}
+
+export interface PowerRankingWeekEntry {
+  week: number;
+  rank: number;
+  powerScore: number;
+}
+
+export interface TeamPowerRankingHistory {
+  current: PowerRankingWeekEntry | null;
+  highest: PowerRankingWeekEntry | null; // best (lowest rank number)
+  lowest: PowerRankingWeekEntry | null; // worst (highest rank number)
+  totalTeams: number;
+  weekly: PowerRankingWeekEntry[];
+}
+
+export async function getTeamPowerRankingHistory(teamId: number): Promise<TeamPowerRankingHistory> {
+  const { teams, matchups, currentMatchupPeriod } = await getLeagueMatchups();
+  if (teams.length === 0) return { current: null, highest: null, lowest: null, totalTeams: 0, weekly: [] };
+
+  const weekScores = buildWeekScores(matchups, currentMatchupPeriod);
+  const weeksPlayed = Array.from(weekScores.keys())
+    .filter((w) => Array.from(weekScores.get(w)!.values()).some((v) => v > 0))
+    .sort((a, b) => a - b);
+
+  const weekly: PowerRankingWeekEntry[] = weeksPlayed.map((week) => {
+    const rankings = computePowerRankingsThroughWeek(teams, matchups, week);
+    const entry = rankings.find((r) => r.teamId === teamId);
+    return { week, rank: entry?.rank ?? teams.length, powerScore: entry?.powerScore ?? 0 };
+  });
+
+  if (weekly.length === 0) return { current: null, highest: null, lowest: null, totalTeams: teams.length, weekly: [] };
+
+  const current = weekly[weekly.length - 1];
+  const highest = [...weekly].sort((a, b) => a.rank - b.rank || a.week - b.week)[0];
+  const lowest = [...weekly].sort((a, b) => b.rank - a.rank || a.week - b.week)[0];
+
+  return { current, highest, lowest, totalTeams: teams.length, weekly };
 }
 
 // ─── Transactions ─────────────────────────────────────────────────────────────
