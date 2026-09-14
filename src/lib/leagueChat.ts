@@ -1,6 +1,9 @@
 import { Redis } from "@upstash/redis";
 import Anthropic from "@anthropic-ai/sdk";
-import { getLeagueMatchups, getPowerRankings, getTransactions } from "@/lib/espnFantasy";
+import { getLeagueMatchups, getPowerRankings, getLeagueStandings, getTransactions, type Matchup } from "@/lib/espnFantasy";
+import { getAllTeamStats } from "@/lib/espn";
+import { getRecapIndex, getRecap } from "@/lib/weeklyRecap";
+import { getRecordBook } from "@/lib/recordBook";
 
 const CHAT_KEY = "league:chat:messages";
 const MAX_MESSAGES = 500;
@@ -80,120 +83,188 @@ export async function postMessage(input: PostMessageInput): Promise<ChatMessage 
 
 // ─── AI bot commentary ──────────────────────────────────────────────────────
 //
-// Runs once/day via a Vercel Cron job. To get a lively board out of a single
-// daily invocation (rather than trickling one message at a time, which would
-// need a cron frequency the free Vercel tier doesn't allow), each persona is
-// asked for a small batch of distinct one-liners in a single Claude call.
+// Each bot posts exactly ONE message per scheduled slot (see vercel.json —
+// six weekly crons, one bot + topic per slot, staggered days/times so they
+// never all fire together). Tuesday is reserved for recapping the just-
+// completed week's matchups; every other slot picks a non-matchup topic.
+
+export type BotTopic =
+  | "matchupRecap"
+  | "powerRankings"
+  | "playerPerformances"
+  | "standings"
+  | "weeklyRecap"
+  | "nflTeamStats"
+  | "transactions";
+
+const GENERAL_TOPICS: BotTopic[] = [
+  "powerRankings",
+  "playerPerformances",
+  "standings",
+  "weeklyRecap",
+  "nflTeamStats",
+  "transactions",
+];
 
 interface BotPersona {
   name: string;
   voice: string;
-  messagesPerRun: number;
 }
 
-const BOT_PERSONAS: BotPersona[] = [
-  {
+export const BOT_PERSONAS: Record<string, BotPersona> = {
+  suarez: {
     name: "SUAREZBOT-9000",
     voice:
       "A trash-talking hype bot. Cocky, funny, loves roasting bad performances and hyping blowouts. Short and punchy, like a tweet.",
-    messagesPerRun: 3,
   },
-  {
+  frye: {
     name: "FRYEBOT-9000",
     voice:
       "A deadpan stats nerd. Dry humor, cites specific numbers, treats fantasy football with mock-serious analytical gravity.",
-    messagesPerRun: 3,
   },
-  {
+  ledger: {
     name: "THE LEDGER",
     voice:
       "An old-timey scorekeeper/historian persona. Speaks like it's recording things for posterity, references records and precedent, slightly pompous.",
-    messagesPerRun: 2,
   },
-];
-
-async function buildLeagueContext(): Promise<string> {
-  const [{ teams, matchups, currentMatchupPeriod }, { rankings }, transactions] = await Promise.all([
-    getLeagueMatchups(),
-    getPowerRankings(),
-    getTransactions(),
-  ]);
-
-  const teamName = (id: number | null) => teams.find((t) => t.id === id)?.name ?? "BYE";
-  const thisWeek = matchups.filter((m) => m.matchupPeriodId === currentMatchupPeriod);
-
-  const scoresLines = thisWeek
-    .map((m) => `${teamName(m.homeTeamId)} ${m.homeScore.toFixed(1)} vs ${teamName(m.awayTeamId)} ${m.awayScore?.toFixed(1) ?? "—"}`)
-    .join("\n");
-
-  const rankingsLines = rankings
-    .slice(0, 5)
-    .map((r) => `#${r.rank} ${r.teamName} (power score ${r.powerScore.toFixed(1)}, all-play ${r.allPlayWins}-${r.allPlayLosses})`)
-    .join("\n");
-
-  const recentTx = transactions
-    .slice(0, 5)
-    .map((tx) => `${tx.teamName}: ${tx.items.map((i) => `${i.type} ${i.playerName}`).join(", ")}`)
-    .join("\n");
-
-  return [
-    `Current week: ${currentMatchupPeriod}`,
-    `\nThis week's matchups:\n${scoresLines || "No scores yet."}`,
-    `\nTop 5 power rankings:\n${rankingsLines || "Not enough data yet."}`,
-    `\nRecent transactions:\n${recentTx || "None recently."}`,
-  ].join("\n");
-}
+};
 
 export async function isAiBotConfigured(): Promise<boolean> {
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
-// Claude often wraps JSON responses in a ```json ... ``` fence despite
-// instructions not to — strip that before parsing rather than relying on the
-// prompt alone.
-function extractJsonArray(text: string): string {
-  const trimmed = text.trim();
-  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-  return fenced ? fenced[1] : trimmed;
+function pickRandomTopic(): BotTopic {
+  return GENERAL_TOPICS[Math.floor(Math.random() * GENERAL_TOPICS.length)];
 }
 
-export async function generateAndPostBotCommentary(): Promise<{ posted: number }> {
-  if (!process.env.ANTHROPIC_API_KEY || !isChatConfigured()) return { posted: 0 };
+// The most recent week where every matchup has a decided winner — i.e. the
+// week that "just concluded" from Tuesday's perspective, regardless of
+// whether ESPN's currentMatchupPeriod has already ticked over to the new week.
+function findLastCompletedWeek(matchups: Matchup[]): number | null {
+  const weeks = Array.from(new Set(matchups.map((m) => m.matchupPeriodId))).sort((a, b) => b - a);
+  for (const week of weeks) {
+    const weekMatchups = matchups.filter((m) => m.matchupPeriodId === week);
+    if (weekMatchups.length > 0 && weekMatchups.every((m) => m.winner !== "UNDECIDED")) return week;
+  }
+  return null;
+}
 
-  const client = new Anthropic();
-  const context = await buildLeagueContext();
-
-  let posted = 0;
-
-  for (const persona of BOT_PERSONAS) {
-    try {
-      const response = await client.messages.create({
-        model: "claude-haiku-4-5",
-        max_tokens: 1024,
-        system: `You are ${persona.name}, a bot personality that posts short comments in a fantasy football league's group chat. Voice: ${persona.voice}\n\nYou will be given the league's current scores, power rankings, and transactions. Write ${persona.messagesPerRun} SEPARATE, DISTINCT one-liner comments (1-2 sentences each) reacting to different specific details from the data — real team names, real scores, real numbers. Do not repeat the same topic across your comments. No hashtags, no emoji spam (an occasional single emoji is fine), no generic filler like "great week everyone".\n\nRespond with ONLY a JSON array of strings, nothing else. Example: ["comment one", "comment two"]`,
-        messages: [{ role: "user", content: context }],
-      });
-
-      const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
-      if (!textBlock) continue;
-
-      let lines: string[];
-      try {
-        lines = JSON.parse(extractJsonArray(textBlock.text));
-      } catch {
-        continue;
-      }
-      if (!Array.isArray(lines)) continue;
-
-      for (const line of lines) {
-        if (typeof line !== "string" || !line.trim()) continue;
-        const result = await postMessage({ author: persona.name, text: line, isBot: true });
-        if (result) posted++;
-      }
-    } catch {
-      continue;
+async function buildTopicContext(topic: BotTopic): Promise<string | null> {
+  switch (topic) {
+    case "matchupRecap": {
+      const { teams, matchups } = await getLeagueMatchups();
+      const week = findLastCompletedWeek(matchups);
+      if (week === null) return null;
+      const teamName = (id: number | null) => teams.find((t) => t.id === id)?.name ?? "BYE";
+      const lines = matchups
+        .filter((m) => m.matchupPeriodId === week)
+        .map((m) => {
+          const winner = m.winner === "HOME" ? teamName(m.homeTeamId) : m.winner === "AWAY" ? teamName(m.awayTeamId) : "tie";
+          return `${teamName(m.homeTeamId)} ${m.homeScore.toFixed(1)} vs ${teamName(m.awayTeamId)} ${m.awayScore?.toFixed(1) ?? "—"} (winner: ${winner})`;
+        })
+        .join("\n");
+      return lines ? `Week ${week} results (just completed):\n${lines}` : null;
+    }
+    case "powerRankings": {
+      const { rankings } = await getPowerRankings();
+      if (rankings.length === 0) return null;
+      const lines = rankings
+        .map(
+          (r) =>
+            `#${r.rank} ${r.teamName} (power score ${r.powerScore.toFixed(1)}, actual record ${r.actualWins}-${r.actualLosses}, all-play ${r.allPlayWins}-${r.allPlayLosses})`
+        )
+        .join("\n");
+      return `Current power rankings:\n${lines}`;
+    }
+    case "standings": {
+      const { teams } = await getLeagueStandings();
+      if (teams.length === 0) return null;
+      const lines = teams
+        .map((t, i) => `#${i + 1} ${t.name} (${t.wins}-${t.losses}${t.ties ? `-${t.ties}` : ""}, ${t.pointsFor.toFixed(1)} PF)`)
+        .join("\n");
+      return `Current league standings:\n${lines}`;
+    }
+    case "transactions": {
+      const txs = await getTransactions();
+      if (txs.length === 0) return null;
+      const lines = txs
+        .slice(0, 8)
+        .map((tx) => `${tx.teamName}: ${tx.items.map((i) => `${i.type} ${i.playerName}`).join(", ")}`)
+        .join("\n");
+      return `Recent transactions:\n${lines}`;
+    }
+    case "weeklyRecap": {
+      const index = await getRecapIndex();
+      if (index.length === 0) return null;
+      const latest = index[0];
+      const full = await getRecap(latest.year, latest.week);
+      if (!full) return null;
+      return `This week's recap article (headline: "${full.headline}"):\n${full.body}`;
+    }
+    case "nflTeamStats": {
+      const stats = await getAllTeamStats();
+      if (stats.length === 0) return null;
+      const top = [...stats].sort((a, b) => b.avgPointsFor - a.avgPointsFor).slice(0, 5);
+      const lines = top
+        .map(
+          (t) =>
+            `${t.abbrev}: ${t.avgPointsFor.toFixed(1)} pts/g, ${t.totalOffensiveYardsPerGame} total yds/g, ${t.sacks} sacks, ${t.defensiveInterceptions} INTs`
+        )
+        .join("\n");
+      return `Top 5 real NFL teams by scoring this season:\n${lines}`;
+    }
+    case "playerPerformances": {
+      const recordBook = await getRecordBook();
+      if (!recordBook) return null;
+      const positions = Object.keys(recordBook.topPlayersByPosition);
+      if (positions.length === 0) return null;
+      const pos = positions[Math.floor(Math.random() * positions.length)];
+      const top = recordBook.topPlayersByPosition[pos].slice(0, 3);
+      if (top.length === 0) return null;
+      const lines = top
+        .map((p) => `${p.playerName} (${p.position}) — ${p.points.toFixed(1)} pts, ${p.teamName} (${p.ownerName}), ${p.year} Wk ${p.week}`)
+        .join("\n");
+      return `All-time best ${pos} weekly performances in this league's history:\n${lines}`;
     }
   }
+}
 
-  return { posted };
+export async function generateSingleBotPost(
+  personaKey: string,
+  requestedTopic?: BotTopic
+): Promise<{ ok: boolean; reason?: string; topic?: BotTopic }> {
+  if (!process.env.ANTHROPIC_API_KEY || !isChatConfigured()) return { ok: false, reason: "not_configured" };
+
+  const persona = BOT_PERSONAS[personaKey];
+  if (!persona) return { ok: false, reason: "unknown_persona" };
+
+  const topic = requestedTopic ?? pickRandomTopic();
+  const context = await buildTopicContext(topic);
+  if (!context) return { ok: false, reason: `no_data_for_topic:${topic}`, topic };
+
+  const topicInstruction =
+    topic === "matchupRecap"
+      ? "React to how last week's matchups played out — call out a specific winner, loser, or score."
+      : "React to this specific data with one sharp, specific observation.";
+
+  try {
+    const client = new Anthropic();
+    const response = await client.messages.create({
+      model: "claude-haiku-4-5",
+      max_tokens: 300,
+      system: `You are ${persona.name}, a bot personality posting in a fantasy football league's group chat. Voice: ${persona.voice}\n\n${topicInstruction} Use ONLY the real data given — real team/player names and numbers, never invented. Write exactly ONE comment, 1-2 sentences. No hashtags, no emoji spam (an occasional single emoji is fine), no generic filler like "great week everyone". Respond with ONLY the comment text — no quotes, no JSON, no preamble.`,
+      messages: [{ role: "user", content: context }],
+    });
+
+    const textBlock = response.content.find((b): b is Anthropic.TextBlock => b.type === "text");
+    if (!textBlock) return { ok: false, reason: "no_response", topic };
+
+    const text = textBlock.text.trim().replace(/^"(.*)"$/, "$1");
+    if (!text) return { ok: false, reason: "empty_response", topic };
+
+    const result = await postMessage({ author: persona.name, text, isBot: true });
+    return { ok: Boolean(result), topic };
+  } catch {
+    return { ok: false, reason: "api_error", topic };
+  }
 }

@@ -1,8 +1,28 @@
 {
   "crons": [
     {
-      "path": "/api/league/chat/bots",
-      "schedule": "0 13 * * *"
+      "path": "/api/league/chat/bots?bot=suarez",
+      "schedule": "0 13 * * 0"
+    },
+    {
+      "path": "/api/league/chat/bots?bot=frye",
+      "schedule": "0 1 * * 1"
+    },
+    {
+      "path": "/api/league/chat/bots?bot=ledger",
+      "schedule": "0 1 * * 2"
+    },
+    {
+      "path": "/api/league/chat/bots?bot=suarez&topic=matchupRecap",
+      "schedule": "0 16 * * 2"
+    },
+    {
+      "path": "/api/league/chat/bots?bot=frye",
+      "schedule": "0 17 * * 4"
+    },
+    {
+      "path": "/api/league/chat/bots?bot=ledger",
+      "schedule": "0 13 * * 5"
     },
     {
       "path": "/api/league/records/build",
