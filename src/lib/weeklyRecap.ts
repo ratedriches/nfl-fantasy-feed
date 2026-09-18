@@ -1,6 +1,6 @@
 import { Redis } from "@upstash/redis";
 import Anthropic from "@anthropic-ai/sdk";
-import { getLeagueMatchups } from "@/lib/espnFantasy";
+import { getLeagueMatchups, type Matchup } from "@/lib/espnFantasy";
 
 const RECAPS_INDEX_KEY = "league:recaps:index";
 const recapKey = (year: number, week: number) => `league:recap:${year}:${week}`;
@@ -56,22 +56,35 @@ function extractJson(text: string): string {
   return fenced ? fenced[1] : trimmed;
 }
 
+// The most recent week where every matchup has a decided winner. ESPN's
+// currentMatchupPeriod ticks over to the new week before the old one gets
+// recapped (e.g. it's already 2 by the time week 1's Tuesday recap should
+// run), so targeting it directly silently skips every week's recap.
+function findLastCompletedWeek(matchups: Matchup[]): number | null {
+  const weeks = Array.from(new Set(matchups.map((m) => m.matchupPeriodId))).sort((a, b) => b - a);
+  for (const week of weeks) {
+    const weekMatchups = matchups.filter((m) => m.matchupPeriodId === week);
+    if (weekMatchups.length > 0 && weekMatchups.every((m) => m.winner !== "UNDECIDED")) return week;
+  }
+  return null;
+}
+
 export async function generateAndStoreWeeklyRecap(): Promise<{ ok: boolean; reason?: string; year?: number; week?: number }> {
   if (!process.env.ANTHROPIC_API_KEY) return { ok: false, reason: "no_api_key" };
   const redis = getRedis();
   if (!redis) return { ok: false, reason: "no_redis" };
 
-  const { teams, matchups, currentMatchupPeriod } = await getLeagueMatchups();
+  const { teams, matchups } = await getLeagueMatchups();
   if (teams.length === 0) return { ok: false, reason: "no_league_data" };
 
   const year = Number(process.env.ESPN_SEASON ?? new Date().getFullYear());
-  const week = currentMatchupPeriod;
-  const weekMatchups = matchups.filter((m) => m.matchupPeriodId === week);
+  const week = findLastCompletedWeek(matchups);
+  if (week === null) return { ok: false, reason: "no_completed_week" };
 
-  if (weekMatchups.length === 0) return { ok: false, reason: "no_matchups_for_week" };
-  if (weekMatchups.some((m) => m.winner === "UNDECIDED")) {
-    return { ok: false, reason: "week_not_finished" };
-  }
+  const existing = await getRecap(year, week);
+  if (existing) return { ok: false, reason: "already_exists", year, week };
+
+  const weekMatchups = matchups.filter((m) => m.matchupPeriodId === week);
 
   const teamName = (id: number | null) => teams.find((t) => t.id === id)?.name ?? "BYE";
 
