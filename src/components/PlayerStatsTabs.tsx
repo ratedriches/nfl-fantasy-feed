@@ -241,7 +241,7 @@ export default function PlayerStatsTabs({ categories }: { categories: LeaderCate
           </table>
         )}
       </div>
-      <p className="mt-2 text-xs text-gray-600">Top 30 per position · 2025 regular season</p>
+      <p className="mt-2 text-xs text-gray-600">Top 30 per position · regular season</p>
     </div>
   );
 }

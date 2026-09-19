@@ -1,5 +1,6 @@
+import { NFL_SEASON as SEASON } from "@/lib/season";
+
 const CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl";
-const SEASON = 2025;
 const SEASON_TYPE = 2;
 
 const TEAM_ID_TO_ABBREV: Record<string, string> = {

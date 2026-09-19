@@ -179,7 +179,7 @@ export default function DefenseStatsClient() {
       <SortableTable players={tabData[tab]} />
 
       <p className="mt-2 text-xs text-gray-600">
-        Tap a column to sort · DT 50 · DE 50 · LB 100 · CB 100 · S 100 · 2025 season
+        Tap a column to sort · DT 50 · DE 50 · LB 100 · CB 100 · S 100 · current season
       </p>
     </div>
   );

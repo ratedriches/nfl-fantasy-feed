@@ -3,9 +3,10 @@
 // DTs: pulled from all 32 team rosters (DTs never top leader categories)
 // Completely isolated from the offensive route.
 
+import { NFL_SEASON as SEASON } from "@/lib/season";
+
 const CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl";
 const SITE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
-const SEASON = 2025;
 const SEASON_TYPE = 2;
 
 const TEAM_IDS = [

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import TeamStatsClient from "@/components/TeamStatsClient";
+import { NFL_SEASON } from "@/lib/season";
 
 export default function TeamStatsPage() {
   return (
@@ -9,7 +10,7 @@ export default function TeamStatsPage() {
           ← NFL Stats
         </Link>
         <h1 className="text-xl font-bold text-white">Team Stats</h1>
-        <p className="mt-0.5 text-xs text-gray-400">2025 NFL Season</p>
+        <p className="mt-0.5 text-xs text-gray-400">{NFL_SEASON} NFL Season</p>
       </header>
 
       <main className="px-4 py-5">

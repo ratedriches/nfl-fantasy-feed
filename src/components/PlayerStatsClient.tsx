@@ -254,7 +254,7 @@ export default function PlayerStatsClient() {
           {tab === "RB" && <SortableTable cols={rbCols}  players={data.rushers.slice(0, 100)}       defaultSortKey="rushingYards" />}
           {tab === "WR" && <SortableTable cols={recCols} players={data.wideReceivers.slice(0, 100)} defaultSortKey="receivingYards" />}
           {tab === "TE" && <SortableTable cols={recCols} players={data.tightEnds.slice(0, 50)}      defaultSortKey="receivingYards" />}
-          <p className="mt-2 text-xs text-gray-600">Tap a column to sort · QB 50 · RB 100 · WR 100 · TE 50 · 2025 season</p>
+          <p className="mt-2 text-xs text-gray-600">Tap a column to sort · QB 50 · RB 100 · WR 100 · TE 50 · current season</p>
         </>
       )}
 

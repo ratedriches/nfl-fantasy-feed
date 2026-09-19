@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { NFL_SEASON } from "@/lib/season";
 
 export default function Home() {
   return (
@@ -6,7 +7,7 @@ export default function Home() {
       {/* Header */}
       <header className="border-b border-gray-800 bg-gray-900 px-4 py-5">
         <h1 className="text-2xl font-bold tracking-tight text-white">🏈 NFL Fantasy Feed</h1>
-        <p className="mt-0.5 text-xs text-gray-400">Your edge for the 2025 season</p>
+        <p className="mt-0.5 text-xs text-gray-400">Your edge for the {NFL_SEASON} season</p>
       </header>
 
       {/* Main nav cards */}
@@ -47,7 +48,7 @@ export default function Home() {
           <div>
             <h2 className="text-lg font-bold text-white">NFL Stats</h2>
             <p className="mt-0.5 text-sm text-gray-400">
-              2025 season team and player statistics
+              {NFL_SEASON} season team and player statistics
             </p>
           </div>
           <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
