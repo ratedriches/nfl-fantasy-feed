@@ -11,14 +11,14 @@ function extractId(ref: string) {
   return m ? m[1] : "";
 }
 
-async function fetchAthleteOk(ref: string): Promise<boolean> {
+async function fetchAthleteOk(ref: string): Promise<{ ok: boolean; error?: string }> {
   try {
     const res = await fetch(ref, { next: { revalidate: 3600 } });
-    if (!res.ok) return false;
+    if (!res.ok) return { ok: false, error: `http_${res.status}` };
     await res.json();
-    return true;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: `${e?.name ?? "Error"}: ${e?.message ?? String(e)}` };
   }
 }
 
@@ -70,9 +70,11 @@ export async function GET() {
     Promise.all(ids.map((id) => fetchAthleteOk(uniqueRefs.get(id)!.statsRef))),
   ]);
   diag.combinedFetchMs = Date.now() - start;
-  diag.athleteOkCount = athleteResults.filter(Boolean).length;
-  diag.statsOkCount = statsResults.filter(Boolean).length;
+  diag.athleteOkCount = athleteResults.filter((r) => r.ok).length;
+  diag.statsOkCount = statsResults.filter((r) => r.ok).length;
   diag.total = ids.length;
+  diag.sampleAthleteErrors = [...new Set(athleteResults.filter((r) => !r.ok).map((r) => r.error))].slice(0, 5);
+  diag.sampleStatsErrors = [...new Set(statsResults.filter((r) => !r.ok).map((r) => r.error))].slice(0, 5);
 
   return Response.json({ diag });
 }
