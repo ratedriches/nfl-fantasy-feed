@@ -1,7 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { OwnerHistory, SeasonResult } from "@/lib/espnFantasy";
+
+type SortKey =
+  | "ownerName"
+  | "seasons"
+  | "wins"
+  | "winPct"
+  | "avgPointsPerWeek"
+  | "firstPlaceFinishes"
+  | "secondPlaceFinishes"
+  | "thirdPlaceFinishes"
+  | "divisionTitles";
+
+const COLUMNS: { key: SortKey; label: string; align: "left" | "center" | "right" }[] = [
+  { key: "ownerName", label: "Owner", align: "left" },
+  { key: "seasons", label: "Seasons", align: "center" },
+  { key: "wins", label: "W-L-T", align: "center" },
+  { key: "winPct", label: "Win%", align: "right" },
+  { key: "avgPointsPerWeek", label: "Avg Pts", align: "right" },
+  { key: "firstPlaceFinishes", label: "🥇", align: "center" },
+  { key: "secondPlaceFinishes", label: "🥈", align: "center" },
+  { key: "thirdPlaceFinishes", label: "🥉", align: "center" },
+  { key: "divisionTitles", label: "Div", align: "center" },
+];
 
 export default function LeagueHistoryClient() {
   const [owners, setOwners] = useState<OwnerHistory[]>([]);
@@ -9,6 +32,8 @@ export default function LeagueHistoryClient() {
   const [configured, setConfigured] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("winPct");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   useEffect(() => {
     fetch("/api/league/history")
@@ -21,6 +46,27 @@ export default function LeagueHistoryClient() {
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+    } else {
+      setSortKey(key);
+      setSortDir(key === "ownerName" ? "asc" : "desc");
+    }
+  }
+
+  const sortedOwners = useMemo(() => {
+    return [...owners].sort((a, b) => {
+      let cmp: number;
+      if (sortKey === "ownerName") {
+        cmp = a.ownerName.localeCompare(b.ownerName);
+      } else {
+        cmp = a[sortKey] - b[sortKey];
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [owners, sortKey, sortDir]);
 
   if (loading) {
     return (
@@ -62,19 +108,23 @@ export default function LeagueHistoryClient() {
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-gray-800 bg-gray-900">
-              <th className="px-3 py-3 text-left font-semibold text-gray-400">Owner</th>
-              <th className="px-3 py-3 text-center font-semibold text-gray-400">Seasons</th>
-              <th className="px-3 py-3 text-center font-semibold text-gray-400">W-L-T</th>
-              <th className="px-3 py-3 text-right font-semibold text-gray-400">Win%</th>
-              <th className="px-3 py-3 text-right font-semibold text-gray-400">Avg Pts</th>
-              <th className="px-3 py-3 text-center font-semibold text-gray-400">🥇</th>
-              <th className="px-3 py-3 text-center font-semibold text-gray-400">🥈</th>
-              <th className="px-3 py-3 text-center font-semibold text-gray-400">🥉</th>
-              <th className="px-3 py-3 text-center font-semibold text-gray-400">Div</th>
+              {COLUMNS.map((col) => (
+                <th
+                  key={col.key}
+                  onClick={() => handleSort(col.key)}
+                  title={`Sort by ${col.label}`}
+                  className={`cursor-pointer select-none px-3 py-3 font-semibold transition-colors ${
+                    col.align === "left" ? "text-left" : col.align === "right" ? "text-right" : "text-center"
+                  } ${sortKey === col.key ? "text-white" : "text-gray-400"}`}
+                >
+                  {col.label}
+                  {sortKey === col.key && <span className="ml-1">{sortDir === "desc" ? "↓" : "↑"}</span>}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {owners.map((o, i) => (
+            {sortedOwners.map((o, i) => (
               <tr
                 key={o.ownerId}
                 className={`border-b border-gray-800 ${i % 2 === 0 ? "bg-gray-950" : "bg-gray-900/50"}`}
@@ -95,6 +145,7 @@ export default function LeagueHistoryClient() {
             ))}
           </tbody>
         </table>
+        <p className="border-t border-gray-800 px-3 py-2 text-[11px] text-gray-600">Tap a column header to sort</p>
       </div>
 
       <div>

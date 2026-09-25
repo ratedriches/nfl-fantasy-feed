@@ -92,6 +92,11 @@ export interface PlayerWeekRecord {
   ownerName: string;
 }
 
+export interface ChampionshipCount {
+  ownerName: string;
+  championships: number;
+}
+
 export interface RecordBook {
   computedAt: number;
   seasonsCovered: number[];
@@ -100,6 +105,7 @@ export interface RecordBook {
   biggestBlowouts: MatchupRecord[];
   bestSeasonRecords: SeasonRecord[];
   worstSeasonRecords: SeasonRecord[];
+  mostChampionships: ChampionshipCount[];
   topPlayersByPosition: Record<string, PlayerWeekRecord[]>;
 }
 
@@ -119,6 +125,7 @@ async function computeTeamRecords(years: number[]) {
   const weeklyScores: WeeklyTeamScore[] = [];
   const matchups: MatchupRecord[] = [];
   const seasonRecords: SeasonRecord[] = [];
+  const championshipCounts = new Map<string, number>();
 
   const seasonDataList = await Promise.all(
     years.map((y) => fetchSeason(y, ["mTeam", "mStandings", "mMatchup", "mSettings"]))
@@ -138,7 +145,12 @@ async function computeTeamRecords(years: number[]) {
     const teamById = new Map<number, { name: string; ownerName: string }>();
     for (const t of data.teams) {
       const ownerId = t.primaryOwner ?? t.owners?.[0] ?? "";
-      teamById.set(t.id, { name: teamDisplayName(t), ownerName: memberName.get(ownerId) ?? "Unknown Owner" });
+      const ownerName = memberName.get(ownerId) ?? "Unknown Owner";
+      teamById.set(t.id, { name: teamDisplayName(t), ownerName });
+
+      if (t.rankCalculatedFinal === 1) {
+        championshipCounts.set(ownerName, (championshipCounts.get(ownerName) ?? 0) + 1);
+      }
 
       const overall = t.record?.overall ?? {};
       const wins = overall.wins ?? 0;
@@ -206,6 +218,10 @@ async function computeTeamRecords(years: number[]) {
   const biggestBlowouts = [...matchups].sort((a, b) => b.margin - a.margin).slice(0, 10);
   const bestSeasonRecords = [...seasonRecords].sort((a, b) => b.winPct - a.winPct).slice(0, 5);
   const worstSeasonRecords = [...seasonRecords].sort((a, b) => a.winPct - b.winPct).slice(0, 5);
+  const mostChampionships = Array.from(championshipCounts.entries())
+    .map(([ownerName, championships]) => ({ ownerName, championships }))
+    .sort((a, b) => b.championships - a.championships)
+    .slice(0, 5);
 
   return {
     topWeeklyTeamScores: weeklyScores.slice(0, 10),
@@ -213,6 +229,7 @@ async function computeTeamRecords(years: number[]) {
     biggestBlowouts,
     bestSeasonRecords,
     worstSeasonRecords,
+    mostChampionships,
   };
 }
 

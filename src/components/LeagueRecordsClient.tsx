@@ -126,6 +126,20 @@ export default function LeagueRecordsClient() {
         </ol>
       </Section>
 
+      <Section title="Most Championship Wins">
+        <ol className="flex flex-col gap-1.5">
+          {(recordBook.mostChampionships ?? []).map((c, i) => (
+            <li key={i} className="flex items-center justify-between rounded-lg bg-gray-900 px-3 py-2 text-sm">
+              <span className="text-gray-500 w-5">{i + 1}.</span>
+              <span className="flex-1 font-semibold text-white">{c.ownerName}</span>
+              <span className="font-bold text-amber-400">
+                {c.championships} 🏆{c.championships === 1 ? "" : "s"}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </Section>
+
       <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
         <Section title="Best Single-Season Records">
           <ol className="flex flex-col gap-1.5">
