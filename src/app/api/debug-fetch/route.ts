@@ -15,8 +15,8 @@ async function fetchAthleteOk(ref: string): Promise<boolean> {
   try {
     const res = await fetch(ref, { next: { revalidate: 3600 } });
     if (!res.ok) return false;
-    const d = await res.json();
-    return Boolean(d && d.id);
+    await res.json();
+    return true;
   } catch {
     return false;
   }
@@ -65,10 +65,14 @@ export async function GET() {
 
   const ids = Array.from(uniqueRefs.keys());
   const start = Date.now();
-  const athleteResults = await Promise.all(ids.map((id) => fetchAthleteOk(uniqueRefs.get(id)!.athleteRef)));
-  diag.athleteFetchMs = Date.now() - start;
+  const [athleteResults, statsResults] = await Promise.all([
+    Promise.all(ids.map((id) => fetchAthleteOk(uniqueRefs.get(id)!.athleteRef))),
+    Promise.all(ids.map((id) => fetchAthleteOk(uniqueRefs.get(id)!.statsRef))),
+  ]);
+  diag.combinedFetchMs = Date.now() - start;
   diag.athleteOkCount = athleteResults.filter(Boolean).length;
-  diag.athleteTotal = ids.length;
+  diag.statsOkCount = statsResults.filter(Boolean).length;
+  diag.total = ids.length;
 
   return Response.json({ diag });
 }
