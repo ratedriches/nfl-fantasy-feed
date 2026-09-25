@@ -1,4 +1,5 @@
 import { NFL_SEASON as SEASON } from "@/lib/season";
+import { mapWithConcurrency } from "@/lib/concurrency";
 
 const CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl";
 const SEASON_TYPE = 2;
@@ -156,11 +157,12 @@ export async function GET() {
       }
     }
 
-    // Batch fetch all athletes and their stats in parallel
+    // Batch fetch all athletes and their stats — capped concurrency, not a
+    // single giant Promise.all (see mapWithConcurrency for why).
     const ids = Array.from(uniqueRefs.keys());
     const [athletes, playerStats] = await Promise.all([
-      Promise.all(ids.map((id) => fetchAthlete(uniqueRefs.get(id)!.athleteRef))),
-      Promise.all(ids.map((id) => fetchPlayerStats(uniqueRefs.get(id)!.statsRef))),
+      mapWithConcurrency(ids, 25, (id) => fetchAthlete(uniqueRefs.get(id)!.athleteRef)),
+      mapWithConcurrency(ids, 25, (id) => fetchPlayerStats(uniqueRefs.get(id)!.statsRef)),
     ]);
 
     const playerMap = new Map<string, EnrichedPlayer>();

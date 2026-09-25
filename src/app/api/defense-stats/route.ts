@@ -4,6 +4,7 @@
 // Completely isolated from the offensive route.
 
 import { NFL_SEASON as SEASON } from "@/lib/season";
+import { mapWithConcurrency } from "@/lib/concurrency";
 
 const CORE = "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl";
 const SITE = "https://site.api.espn.com/apis/site/v2/sports/football/nfl";
@@ -163,8 +164,8 @@ export async function GET() {
 
     const leaderIds = Array.from(uniqueRefs.keys());
     const [leaderAthletes, leaderStatMaps] = await Promise.all([
-      Promise.all(leaderIds.map((id) => fetchAthlete(uniqueRefs.get(id)!.athleteRef))),
-      Promise.all(leaderIds.map((id) => fetchStats(id))),
+      mapWithConcurrency(leaderIds, 25, (id) => fetchAthlete(uniqueRefs.get(id)!.athleteRef)),
+      mapWithConcurrency(leaderIds, 25, (id) => fetchStats(id)),
     ]);
 
     const LB_CB_S = new Set(["LB", "CB", "S", "FS", "SS", "DB"]);
@@ -189,7 +190,7 @@ export async function GET() {
     });
 
     // DT + DE — fetched from all 32 rosters for complete coverage
-    const dlinemenStats = await Promise.all(dlinemenRoster.map((p) => fetchStats(p.id)));
+    const dlinemenStats = await mapWithConcurrency(dlinemenRoster, 25, (p) => fetchStats(p.id));
     const dlinemenPlayers: DefPlayer[] = dlinemenRoster
       .map((p, i) => {
         const s = dlinemenStats[i];
