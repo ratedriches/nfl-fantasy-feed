@@ -27,20 +27,6 @@ export default function Home() {
         </Link>
 
         <Link
-          href="/beat-writers"
-          className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
-        >
-          <span className="text-4xl">📰</span>
-          <div>
-            <h2 className="text-lg font-bold text-white">Beat Writers</h2>
-            <p className="mt-0.5 text-sm text-gray-400">
-              Latest tweets from reporters covering all 32 teams
-            </p>
-          </div>
-          <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
-        </Link>
-
-        <Link
           href="/stats"
           className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
         >
@@ -55,28 +41,14 @@ export default function Home() {
         </Link>
 
         <Link
-          href="/injuries"
+          href="/deep-dive-research"
           className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
         >
-          <span className="text-4xl">🩹</span>
+          <span className="text-4xl">🔬</span>
           <div>
-            <h2 className="text-lg font-bold text-white">Injury Report</h2>
+            <h2 className="text-lg font-bold text-white">Deep Dive Research</h2>
             <p className="mt-0.5 text-sm text-gray-400">
-              Current injury status for all 32 teams
-            </p>
-          </div>
-          <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
-        </Link>
-
-        <Link
-          href="/team-research"
-          className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
-        >
-          <span className="text-4xl">🔍</span>
-          <div>
-            <h2 className="text-lg font-bold text-white">Team Research</h2>
-            <p className="mt-0.5 text-sm text-gray-400">
-              In-depth scouting and roster breakdowns for all 32 teams
+              Injury reports, team analysis, and beat tweets for all 32 teams
             </p>
           </div>
           <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
