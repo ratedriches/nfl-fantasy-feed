@@ -34,10 +34,10 @@ export default async function TeamInjuryPage({ params }: { params: Promise<{ slu
             href={practiceReportUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-900/70 px-3 py-2 text-xs font-semibold text-white active:scale-95 transition-transform"
+            className="mt-3 flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-blue-600/30 active:scale-95 transition-transform"
           >
-            🏃 Official Practice Report
-            <span className="text-gray-500">↗</span>
+            ⛑⛑️ Go To Official Practice Report
+            <span>↗</span>
           </a>
         )}
       </header>
