@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { teams } from "@/data/teams";
+import { PRACTICE_REPORT_URLS } from "@/data/practiceReportUrls";
 import TeamInjuryReportClient from "@/components/TeamInjuryReportClient";
 
 export default async function TeamInjuryPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -8,6 +9,8 @@ export default async function TeamInjuryPage({ params }: { params: Promise<{ slu
 
   const team = teams.find((t) => t.slug === slug);
   if (!team) notFound();
+
+  const practiceReportUrl = PRACTICE_REPORT_URLS[slug];
 
   return (
     <div className="min-h-screen bg-gray-950">
@@ -26,6 +29,17 @@ export default async function TeamInjuryPage({ params }: { params: Promise<{ slu
             <p className="text-xs text-gray-400">Injury Report</p>
           </div>
         </div>
+        {practiceReportUrl && (
+          <a
+            href={practiceReportUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-gray-700 bg-gray-900/70 px-3 py-2 text-xs font-semibold text-white active:scale-95 transition-transform"
+          >
+            🏃 Official Practice Report
+            <span className="text-gray-500">↗</span>
+          </a>
+        )}
       </header>
 
       <main className="px-4 py-5">
