@@ -55,6 +55,20 @@ export default function Home() {
         </Link>
 
         <Link
+          href="/injuries"
+          className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
+        >
+          <span className="text-4xl">🩹</span>
+          <div>
+            <h2 className="text-lg font-bold text-white">Injury Report</h2>
+            <p className="mt-0.5 text-sm text-gray-400">
+              Current injury status for all 32 teams
+            </p>
+          </div>
+          <span className="ml-auto text-gray-600 group-hover:text-gray-300">→</span>
+        </Link>
+
+        <Link
           href="/team-research"
           className="group flex items-center gap-5 rounded-2xl border border-gray-800 bg-gray-900 p-6 active:scale-95 transition-transform"
         >
