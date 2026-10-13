@@ -101,6 +101,7 @@ export const teams: Team[] = [
     textColor: "#ffffff",
     beatWriters: [
       { name: "Zac Jackson", handle: "AkronJackson", outlet: "The Athletic" },
+      { name: "Mary Kay Cabot", handle: "MaryKayCabot", outlet: "Cleveland.com" },
     ],
   },
   {
